@@ -1,0 +1,23 @@
+name: Heatpump API
+version: "0.1.0"
+slug: heatpump_api
+description: REST API proxy for heatpump web UI, enabling Home Assistant automation
+url: ""
+arch:
+  - aarch64
+  - armv7
+  - amd64
+startup: application
+boot: auto
+ports:
+  8765/tcp: 8765
+options:
+  heatpump_url: ""
+  username: ""
+  password: ""
+  port: 8765
+schema:
+  heatpump_url: str
+  username: str
+  password: str
+  port: int?
