@@ -10,7 +10,7 @@ _OPTIONS_PATH = Path("/data/options.json")
 class Settings(BaseModel):
     heatpump_url: str
     username: str
-    password: str
+    password: str  # sent to HPM as the 'code' form field (HPM "access code", max 8 chars)
     port: int = 8765
     host: str = "0.0.0.0"
 

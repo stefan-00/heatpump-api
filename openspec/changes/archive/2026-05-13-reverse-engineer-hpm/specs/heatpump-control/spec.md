@@ -1,10 +1,4 @@
-# Heatpump Control
-
-## Purpose
-
-Retrieves the current heatpump state by parsing HTML view pages from the HPM web UI and returns it as a structured multi-subsystem data model.
-
-## Requirements
+## MODIFIED Requirements
 
 ### Requirement: Read current heatpump state
 The service SHALL retrieve the current state of the HPM heating system by fetching the HTML view pages for the heat pump unit, heating circuit 1, and domestic hot water subsystem, and return it as a structured `SystemStatus` model. The model SHALL include the system operating mode, outdoor temperature, heat pump unit status, heating circuit 1 status, and domestic hot water status.
@@ -31,3 +25,13 @@ The service SHALL model the heatpump state as a multi-subsystem structure, not a
 #### Scenario: Old AC-style fields are absent
 - **WHEN** `GET /api/v1/status` is called
 - **THEN** the response SHALL NOT contain fields named `mode`, `fan_speed`, `current_temp`, or `target_temp` (the prior air-conditioner model fields)
+
+## REMOVED Requirements
+
+### Requirement: Send control commands
+**Reason**: The original `send_command` API assumed AC-style commands (power on/off, heat/cool/dry/fan modes, single temperature setpoint, fan speed). The HPM-800B7F is a multi-zone heating system with no such commands. Control is via `POST /execgrset.rsp` with a parameter ID and value, and mode switching via `POST /ms.rsp`.
+**Migration**: Control endpoints will be re-introduced in the next change as zone-specific setpoint commands (e.g. `POST /api/v1/heating-circuit/1/setpoints`) and a system mode command (`POST /api/v1/system/mode`), using the discovered HPM write protocol.
+
+### Requirement: Proxy fidelity
+**Reason**: The original proxy-fidelity requirement was framed around AC command semantics. The HPM uses a parameter-ID-based write protocol (`execgrset.rsp`) that is being deferred to the control change.
+**Migration**: Will be re-introduced in the control change with HPM-specific semantics: allowed value ranges are those returned by `vinfo.rsp` for each parameter ID, not hardcoded enums.

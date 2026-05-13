@@ -1,10 +1,4 @@
-# Session Management
-
-## Purpose
-
-Manages authentication with the heatpump web UI, maintaining a single active session in memory and handling transparent re-authentication when sessions expire.
-
-## Requirements
+## MODIFIED Requirements
 
 ### Requirement: Authenticate with heatpump web UI
 The service SHALL authenticate with the HPM-800B7F web UI using a two-step login flow: first obtain a `sessionid` from the initial HTTP redirect, then POST credentials to `/getlogin.rsp`. The `sessionid` string SHALL be stored in memory and appended as a URL query parameter on all subsequent requests. No cookie jar is used.
@@ -31,14 +25,3 @@ The service SHALL append `sessionid=<value>` as a URL query parameter to every H
 #### Scenario: Session expires mid-operation
 - **WHEN** a proxied request to the web UI returns a 302 redirect to `login.rsp` (session expired) or an HTTP 401
 - **THEN** the service re-authenticates using the two-step flow, stores the new `sessionid`, retries the original request exactly once, and returns the result to the caller
-
-#### Scenario: Re-authentication fails after session expiry
-- **WHEN** the retry after re-authentication also fails
-- **THEN** the service SHALL return a 502 error to the caller and log the failure; it SHALL NOT retry further
-
-### Requirement: Single active session
-The service SHALL maintain at most one active session at a time. Concurrent requests that trigger simultaneous re-authentication attempts MUST be serialised so that only one login request is sent to the web UI.
-
-#### Scenario: Concurrent requests during re-authentication
-- **WHEN** multiple requests arrive while a re-authentication is already in progress
-- **THEN** all waiting requests use the new session once re-authentication completes rather than each initiating their own login

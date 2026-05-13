@@ -14,7 +14,7 @@ ports:
 options:
   heatpump_url: ""
   username: ""
-  password: ""
+  password: ""  # HPM access code (max 8 characters)
   port: 8765
 schema:
   heatpump_url: str

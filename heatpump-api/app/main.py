@@ -7,7 +7,7 @@ from fastapi.responses import JSONResponse
 
 from .config import settings
 from .session import StartupError, session_manager
-from .routers import status, control
+from .routers import status
 
 logging.basicConfig(
     level=logging.INFO,
@@ -30,7 +30,6 @@ async def lifespan(app: FastAPI):
 app = FastAPI(title="Heatpump API", version="0.1.0", lifespan=lifespan)
 
 app.include_router(status.router)
-app.include_router(control.router)
 
 
 @app.get("/health")
