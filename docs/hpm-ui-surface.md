@@ -257,7 +257,7 @@ WEB-RC root  (branchnr=1, level=0)
 │       ├── photovoltaics       (type-Pv=1, dem-DHW=1@50°C, dem-HC=1@50°C, minSwOfTm=10min)
 │       └── Smart Grid          (inp1=0, Inp2=0)
 ├── interfaces  (bn=3, lv=1)
-│   ├── Ethernet   IP=192.168.1.11, DHCP=off, MAC=00:1F:FC:80:0B:7F, host=hpm-800B7F
+│   ├── Ethernet   IP=192.168.x.x, DHCP=off, MAC=<device-mac>, host=hpm-800B7F
 │   └── heatpumps  HP interface status
 ├── configuration  (bn=4, lv=1)
 │   ├── inputs   term.17–28 (Pt1000 sensors + meter/mess + 0-10V)

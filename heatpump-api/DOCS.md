@@ -14,7 +14,7 @@ and dashboards can read and control the system.
 
 | Option | Required | Description |
 |---|---|---|
-| `heatpump_url` | Yes | Full URL of the HPM web UI, e.g. `http://192.168.1.11` |
+| `heatpump_url` | Yes | Full URL of the HPM web UI, e.g. `http://192.168.1.x` |
 | `username` | Yes | HPM login username (typically `service`) |
 | `password` | Yes | HPM access code (up to 8 characters) |
 | `port` | No | Port the API listens on inside the add-on (default: `8765`) |

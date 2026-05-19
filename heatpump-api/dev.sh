@@ -9,7 +9,7 @@ if [ ! -d .venv ]; then
   .venv/bin/pip install -q -r requirements.txt
 fi
 
-: "${HEATPUMP_URL:?Set HEATPUMP_URL (e.g. http://192.168.1.11)}"
+: "${HEATPUMP_URL:?Set HEATPUMP_URL (e.g. http://192.168.1.x)}"
 : "${HEATPUMP_USERNAME:?Set HEATPUMP_USERNAME}"
 : "${HEATPUMP_PASSWORD:?Set HEATPUMP_PASSWORD}"
 

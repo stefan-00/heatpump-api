@@ -1,6 +1,6 @@
 ## Why
 
-The foundation change left `TODO` stubs in `session.py` and `client.py` because the heatpump's web UI protocol was unknown at that point. Live probing of the HPM-800B7F (http://192.168.1.11/) has revealed the authentication mechanism; this change fills in those stubs and implements the first working API endpoint.
+The foundation change left `TODO` stubs in `session.py` and `client.py` because the heatpump's web UI protocol was unknown at that point. Live probing of the HPM-800B7F has revealed the authentication mechanism; this change fills in those stubs and implements the first working API endpoint.
 
 ## What Changes
 
