@@ -12,7 +12,6 @@ class Settings(BaseModel):
     username: str
     password: str  # sent to HPM as the 'code' form field (HPM "access code", max 8 chars)
     port: int = 8765
-    host: str = "0.0.0.0"
 
 
 def _load() -> Settings:
@@ -25,7 +24,6 @@ def _load() -> Settings:
             username=os.environ["HEATPUMP_USERNAME"],
             password=os.environ["HEATPUMP_PASSWORD"],
             port=int(os.environ.get("PORT", "8765")),
-            host=os.environ.get("HOST", "0.0.0.0"),
         )
     except KeyError as e:
         raise RuntimeError(

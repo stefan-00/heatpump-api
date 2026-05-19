@@ -7,7 +7,7 @@ from fastapi.responses import JSONResponse
 
 from .config import settings
 from .session import StartupError, session_manager
-from .routers import status
+from .routers import setpoints, status
 
 logging.basicConfig(
     level=logging.INFO,
@@ -30,6 +30,7 @@ async def lifespan(app: FastAPI):
 app = FastAPI(title="Heatpump API", version="0.1.0", lifespan=lifespan)
 
 app.include_router(status.router)
+app.include_router(setpoints.router)
 
 
 @app.get("/health")
@@ -44,4 +45,4 @@ async def unhandled_exception_handler(request: Request, exc: Exception) -> JSONR
 
 
 if __name__ == "__main__":
-    uvicorn.run(app, host=settings.host, port=settings.port)
+    uvicorn.run(app, host="0.0.0.0", port=settings.port)
