@@ -62,6 +62,24 @@ class SessionManager:
             )
 
         self._session_id = session_id
+
+        # Elevate to WEB-RC access level 3 (code 4444).
+        # GET /webfb.rsp first (loads the code-entry form), then POST the code.
+        # Set=OK is mandatory — without it the server returns 302 but does not elevate.
+        # The redirect URL already contains sessionid; do not append it again.
+        try:
+            await self._client.get(f"{base}/webfb.rsp?sessionid={session_id}")
+            r = await self._client.post(
+                base + "/getcode.rsp",
+                data={"code": "4444", "Set": "OK", "sessionid": session_id,
+                      "branchnr": "1", "level": "0"},
+            )
+            if r.status_code == 302:
+                redirect = r.headers.get("location", "menue.rsp?branchnr=1&level=0")
+                await self._client.get(f"{base}/{redirect.lstrip('/')}")
+        except httpx.RequestError as e:
+            raise StartupError(f"WEB-RC elevation failed: {e}") from e
+
         self._generation += 1
         logger.info("Authenticated with heatpump web UI (session generation %d)", self._generation)
 

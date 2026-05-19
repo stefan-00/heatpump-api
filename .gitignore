@@ -18,3 +18,8 @@ build/
 # IDE
 .idea/
 .vscode/
+
+# Exploration / debug scripts
+debug_*.py
+explore_*.py
+*_dump.md

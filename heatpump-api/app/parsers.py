@@ -70,6 +70,30 @@ def parse_dhw(html: str) -> DomesticHotWater:
     )
 
 
+_HC_SETPOINT_FIELDS = ("roomOT1", "roomOT2", "roomOT3", "roomOT4", "roomNO", "roomSNOT")
+
+
+def _mainpane(html: str) -> str:
+    m = re.search(r'<!--\s*start_mainpane\s*-->(.*?)<!--\s*end_mainpane\s*-->', html, re.DOTALL | re.IGNORECASE)
+    return m.group(1) if m else html
+
+
+def parse_hc_setpoints(html: str) -> dict[str, float]:
+    pane = _mainpane(html)
+    result: dict[str, float] = {}
+    for tr in re.findall(r"<tr[^>]*>(.*?)</tr>", pane, re.DOTALL | re.IGNORECASE):
+        text = re.sub(r"<[^>]+>", " ", tr)
+        text = re.sub(r"\s+", " ", text).strip()
+        for name in _HC_SETPOINT_FIELDS:
+            if name in text:
+                after = text.split(name, 1)[1]
+                m = re.search(r"[-+]?\d+\.?\d*", after)
+                if m:
+                    result[name] = float(m.group())
+                break
+    return result
+
+
 def parse_operating_mode(html: str) -> str:
     """Return the current operating mode label from the MS0 selector in v0.rsp HTML.
 

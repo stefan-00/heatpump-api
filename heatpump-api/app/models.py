@@ -1,4 +1,6 @@
-from pydantic import BaseModel
+from __future__ import annotations
+
+from pydantic import BaseModel, ConfigDict
 
 
 class HeatPumpUnit(BaseModel):
@@ -32,3 +34,23 @@ class SystemStatus(BaseModel):
 
 class ErrorResponse(BaseModel):
     detail: str
+
+
+class HcSetpoints(BaseModel):
+    roomOT1: float | None = None
+    roomOT2: float | None = None
+    roomOT3: float | None = None
+    roomOT4: float | None = None
+    roomNO: float | None = None
+    roomSNOT: float | None = None
+
+
+class HcSetpointsPatch(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    roomOT1: float | None = None
+    roomOT2: float | None = None
+    roomOT3: float | None = None
+    roomOT4: float | None = None
+    roomNO: float | None = None
+    roomSNOT: float | None = None
