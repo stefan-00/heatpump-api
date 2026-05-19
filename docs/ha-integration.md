@@ -16,8 +16,12 @@ GET http://localhost:8765/health
 
 | Setup | Base URL |
 |---|---|
-| HAOS add-on (same host as HA) | `http://localhost:8765` |
+| HAOS add-on | `http://<ha-host-ip>:8765` (e.g. `http://192.168.1.x:8765`) |
 | Standalone Docker on a separate host | `http://<host-ip>:8765` |
+
+> **Note:** `localhost` does **not** work from within HA's `configuration.yaml` on HAOS.
+> HA Core and add-ons run in separate Docker containers; the add-on's published port is
+> only reachable via the host's LAN IP address.
 
 ## Polling interval
 

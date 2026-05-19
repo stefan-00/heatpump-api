@@ -31,8 +31,11 @@ Subsequent restarts use the cached image and are fast.
 
 ## API endpoints
 
-Once running, the API is available at `http://localhost:8765` (from within HA) or
-`http://<your-ha-ip>:8765` from other devices on the network.
+Once running, the API is available at `http://<your-ha-ip>:8765` from any device
+on your local network, including from HA's own `configuration.yaml`.
+
+> **Note:** Use your HA host's LAN IP address — `localhost` does not work from within
+> HA's configuration on HAOS because HA and add-ons run in separate containers.
 
 | Endpoint | Description |
 |---|---|
@@ -41,7 +44,7 @@ Once running, the API is available at `http://localhost:8765` (from within HA) o
 | `GET /api/v1/circuits/{hc1\|hc2}/setpoints` | Read all 6 temperature setpoints for a circuit |
 | `PATCH /api/v1/circuits/{hc1\|hc2}/setpoints` | Update one or more setpoints for a circuit |
 
-Interactive API docs (Swagger UI) are available at `http://localhost:8765/docs`.
+Interactive API docs (Swagger UI) are available at `http://<your-ha-ip>:8765/docs`.
 
 ## Setting up Home Assistant entities
 
