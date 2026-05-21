@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.1.1
+
+### Fixed
+
+- HC2 setpoint sensors in Home Assistant showing HC1 values: concurrent HC1 and HC2
+  polls from HA fired simultaneously and interfered on the HPM's stateful session.
+  Replaced per-circuit locks with a single global WEB-RC navigation lock.
+
 ## 0.1.0
 
 Initial release.
