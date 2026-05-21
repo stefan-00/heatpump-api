@@ -8,7 +8,7 @@ only HA's built-in integrations — no custom component required.
 The Heatpump API add-on must be installed and running. Verify it with:
 
 ```
-GET http://localhost:8765/health
+GET http://<ha-host-ip>:8765/health
 → {"status": "ok"}
 ```
 
@@ -38,7 +38,7 @@ populates all 14 sensors.
 
 ```yaml
 rest:
-  - resource: http://localhost:8765/api/v1/status
+  - resource: http://<ha-host-ip>:8765/api/v1/status
     scan_interval: 30
     sensor:
       - name: "Heatpump Operating Mode"
@@ -133,7 +133,7 @@ for the writable number entities below.
 
 ```yaml
 rest:
-  - resource: http://localhost:8765/api/v1/circuits/hc1/setpoints
+  - resource: http://<ha-host-ip>:8765/api/v1/circuits/hc1/setpoints
     scan_interval: 30
     sensor:
       - name: "HC1 Setpoint roomOT1"
@@ -178,7 +178,7 @@ rest:
         device_class: temperature
         state_class: measurement
 
-  - resource: http://localhost:8765/api/v1/circuits/hc2/setpoints
+  - resource: http://<ha-host-ip>:8765/api/v1/circuits/hc2/setpoints
     scan_interval: 30
     sensor:
       - name: "HC2 Setpoint roomOT1"
@@ -239,74 +239,74 @@ Each control is wired to a `rest_command` that sends a PATCH to the API.
 rest_command:
   # HC1
   heatpump_set_hc1_roomot1:
-    url: http://localhost:8765/api/v1/circuits/hc1/setpoints
+    url: http://<ha-host-ip>:8765/api/v1/circuits/hc1/setpoints
     method: PATCH
     content_type: application/json
     payload: '{"roomOT1": {{ value }}}'
 
   heatpump_set_hc1_roomot2:
-    url: http://localhost:8765/api/v1/circuits/hc1/setpoints
+    url: http://<ha-host-ip>:8765/api/v1/circuits/hc1/setpoints
     method: PATCH
     content_type: application/json
     payload: '{"roomOT2": {{ value }}}'
 
   heatpump_set_hc1_roomot3:
-    url: http://localhost:8765/api/v1/circuits/hc1/setpoints
+    url: http://<ha-host-ip>:8765/api/v1/circuits/hc1/setpoints
     method: PATCH
     content_type: application/json
     payload: '{"roomOT3": {{ value }}}'
 
   heatpump_set_hc1_roomot4:
-    url: http://localhost:8765/api/v1/circuits/hc1/setpoints
+    url: http://<ha-host-ip>:8765/api/v1/circuits/hc1/setpoints
     method: PATCH
     content_type: application/json
     payload: '{"roomOT4": {{ value }}}'
 
   heatpump_set_hc1_roomno:
-    url: http://localhost:8765/api/v1/circuits/hc1/setpoints
+    url: http://<ha-host-ip>:8765/api/v1/circuits/hc1/setpoints
     method: PATCH
     content_type: application/json
     payload: '{"roomNO": {{ value }}}'
 
   heatpump_set_hc1_roomsnot:
-    url: http://localhost:8765/api/v1/circuits/hc1/setpoints
+    url: http://<ha-host-ip>:8765/api/v1/circuits/hc1/setpoints
     method: PATCH
     content_type: application/json
     payload: '{"roomSNOT": {{ value }}}'
 
   # HC2
   heatpump_set_hc2_roomot1:
-    url: http://localhost:8765/api/v1/circuits/hc2/setpoints
+    url: http://<ha-host-ip>:8765/api/v1/circuits/hc2/setpoints
     method: PATCH
     content_type: application/json
     payload: '{"roomOT1": {{ value }}}'
 
   heatpump_set_hc2_roomot2:
-    url: http://localhost:8765/api/v1/circuits/hc2/setpoints
+    url: http://<ha-host-ip>:8765/api/v1/circuits/hc2/setpoints
     method: PATCH
     content_type: application/json
     payload: '{"roomOT2": {{ value }}}'
 
   heatpump_set_hc2_roomot3:
-    url: http://localhost:8765/api/v1/circuits/hc2/setpoints
+    url: http://<ha-host-ip>:8765/api/v1/circuits/hc2/setpoints
     method: PATCH
     content_type: application/json
     payload: '{"roomOT3": {{ value }}}'
 
   heatpump_set_hc2_roomot4:
-    url: http://localhost:8765/api/v1/circuits/hc2/setpoints
+    url: http://<ha-host-ip>:8765/api/v1/circuits/hc2/setpoints
     method: PATCH
     content_type: application/json
     payload: '{"roomOT4": {{ value }}}'
 
   heatpump_set_hc2_roomno:
-    url: http://localhost:8765/api/v1/circuits/hc2/setpoints
+    url: http://<ha-host-ip>:8765/api/v1/circuits/hc2/setpoints
     method: PATCH
     content_type: application/json
     payload: '{"roomNO": {{ value }}}'
 
   heatpump_set_hc2_roomsnot:
-    url: http://localhost:8765/api/v1/circuits/hc2/setpoints
+    url: http://<ha-host-ip>:8765/api/v1/circuits/hc2/setpoints
     method: PATCH
     content_type: application/json
     payload: '{"roomSNOT": {{ value }}}'
