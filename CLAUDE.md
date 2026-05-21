@@ -76,7 +76,7 @@ The HPM-800B7F serves classic HTML pages. There is no JSON API.
 
 - `session.py` uses a generation counter + `asyncio.Lock` so concurrent session-expiry responses trigger only one re-login
 - `parsers.py` functions (`parse_hp1`, `parse_hc1`, `parse_dhw`, `parse_operating_mode`) each take raw latin-1 HTML and return typed Pydantic models; `extract_param(html, id)` matches by numeric param ID prefix; `parse_hc_setpoints(html)` extracts six setpoint values from the WEB-RC setpoints page using `<!-- start_mainpane -->` / `<!-- end_mainpane -->` comment markers to bound the search
-- `HeatpumpClient._circuit_locks` — per-circuit `asyncio.Lock` serialises concurrent WEB-RC navigation/write requests; navigation re-establishes the full path from root on every call (device context is stateful and can drift)
+- `HeatpumpClient._webrc_lock` — single `asyncio.Lock` serialises ALL WEB-RC navigation/write requests across circuits; navigation re-establishes the full path from root on every call (device context is stateful — concurrent hc1/hc2 navigations on the same session interfere with each other)
 - HPM value strings use a `"LABEL   value"` format for some fields — `parse_bool` and `parse_last_token` use the **last** whitespace-separated token, not the first
 - The app reads `/data/options.json` directly — `run.sh` needs no mapping logic
 - `password` config key maps to the HPM `code` form field

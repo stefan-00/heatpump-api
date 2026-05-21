@@ -32,8 +32,8 @@
 
 ## 7. Verification
 
-- [ ] 7.1 Add the GitHub repository URL in the HA Supervisor → confirm `Heatpump API` appears as an available add-on
-- [ ] 7.2 Install and start the add-on via Supervisor → confirm `GET /health` returns `{"status": "ok"}` and `GET /api/v1/status` returns valid data
-- [ ] 7.3 Apply the status sensor config from `docs/ha-integration.md` in HA and reload → confirm all 14 sensor entities appear with correct values
+- [x] 7.1 Add the GitHub repository URL in the HA Supervisor → confirm `Heatpump API` appears as an available add-on
+- [x] 7.2 Install and start the add-on via Supervisor → confirm `GET /health` returns `{"status": "ok"}` and `GET /api/v1/status` returns valid data
+- [x] 7.3 Apply the status sensor config from `docs/ha-integration.md` in HA and reload → confirm all 14 sensor entities appear with correct values
 - [ ] 7.4 Apply the HC1 and HC2 number entity config and reload → confirm all 12 setpoint number entities show correct current values
 - [ ] 7.5 Change one number entity value in HA UI → confirm API returns 200, device reflects the change, entity updates; restore original value

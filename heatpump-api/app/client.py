@@ -32,10 +32,9 @@ _SETPOINT_POSITION = {
 class HeatpumpClient:
     def __init__(self, session: SessionManager) -> None:
         self._session = session
-        self._circuit_locks: dict[str, asyncio.Lock] = {
-            "hc1": asyncio.Lock(),
-            "hc2": asyncio.Lock(),
-        }
+        # Single lock for all WEB-RC navigation — the HPM session is stateful and
+        # concurrent navigations to different circuits interfere with each other.
+        self._webrc_lock: asyncio.Lock = asyncio.Lock()
 
     async def get_status(self) -> SystemStatus:
         base = settings.heatpump_url.rstrip("/")
@@ -103,7 +102,7 @@ class HeatpumpClient:
     async def get_hc_setpoints(self, circuit_id: str) -> HcSetpoints:
         base = settings.heatpump_url.rstrip("/")
         labels = _CIRCUIT_LABELS[circuit_id]
-        async with self._circuit_locks[circuit_id]:
+        async with self._webrc_lock:
             try:
                 resp = await self._webrc_navigate(base, labels)
             except httpx.RequestError as e:
@@ -119,7 +118,7 @@ class HeatpumpClient:
         base = settings.heatpump_url.rstrip("/")
         labels = _CIRCUIT_LABELS[circuit_id]
         position = _SETPOINT_POSITION[field]
-        async with self._circuit_locks[circuit_id]:
+        async with self._webrc_lock:
             try:
                 await self._webrc_navigate(base, labels)
                 # Validate against device limits before writing
