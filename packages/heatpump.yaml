@@ -148,6 +148,7 @@ rest:
 
       - name: "HC1 Setpoint roomNO"
         unique_id: heatpump_hc1_sp_roomno
+        availability: "{{ 'roomNO' in value_json }}"
         value_template: "{{ value_json.roomNO }}"
         unit_of_measurement: "°C"
         device_class: temperature
@@ -155,6 +156,7 @@ rest:
 
       - name: "HC1 Setpoint roomSNOT"
         unique_id: heatpump_hc1_sp_roomsnot
+        availability: "{{ 'roomSNOT' in value_json }}"
         value_template: "{{ value_json.roomSNOT }}"
         unit_of_measurement: "°C"
         device_class: temperature
@@ -198,6 +200,7 @@ rest:
 
       - name: "HC2 Setpoint roomNO"
         unique_id: heatpump_hc2_sp_roomno
+        availability: "{{ 'roomNO' in value_json }}"
         value_template: "{{ value_json.roomNO }}"
         unit_of_measurement: "°C"
         device_class: temperature
@@ -205,6 +208,7 @@ rest:
 
       - name: "HC2 Setpoint roomSNOT"
         unique_id: heatpump_hc2_sp_roomsnot
+        availability: "{{ 'roomSNOT' in value_json }}"
         value_template: "{{ value_json.roomSNOT }}"
         unit_of_measurement: "°C"
         device_class: temperature
