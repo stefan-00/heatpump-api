@@ -46,6 +46,7 @@ class HeatpumpClient:
                 self._session.request("GET", f"{base}/v0.rsp"),
             )
         except httpx.RequestError as e:
+            logger.warning("Heatpump unreachable during status fetch: %s", e)
             raise HTTPException(status_code=502, detail=f"Heatpump unreachable: {e}") from e
 
         hp1_html, hc1_html, dhw_html, sys_html = (
@@ -106,6 +107,7 @@ class HeatpumpClient:
             try:
                 resp = await self._webrc_navigate(base, labels)
             except httpx.RequestError as e:
+                logger.warning("Heatpump unreachable during setpoint read: %s", e)
                 raise HTTPException(status_code=502, detail=f"Heatpump unreachable: {e}") from e
 
         html = resp.content.decode("latin-1")
@@ -155,8 +157,8 @@ class HeatpumpClient:
             except HTTPException:
                 raise
             except httpx.RequestError as e:
+                logger.warning("Heatpump unreachable during setpoint write: %s", e)
                 raise HTTPException(status_code=502, detail=f"Heatpump unreachable: {e}") from e
-
 
 
 client = HeatpumpClient(session_manager)

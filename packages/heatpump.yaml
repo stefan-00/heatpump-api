@@ -64,6 +64,7 @@ rest:
 
       - name: "HC1 Flow Setpoint"
         unique_id: heatpump_hc1_flow_setpoint
+        availability: "{{ 'heating_circuit_1' in value_json }}"
         value_template: "{{ value_json.heating_circuit_1.flow_setpoint }}"
         unit_of_measurement: "°C"
         device_class: temperature
@@ -71,6 +72,7 @@ rest:
 
       - name: "HC1 Flow Temperature"
         unique_id: heatpump_hc1_flow_temp
+        availability: "{{ 'heating_circuit_1' in value_json }}"
         value_template: "{{ value_json.heating_circuit_1.flow_temp }}"
         unit_of_measurement: "°C"
         device_class: temperature
@@ -78,6 +80,7 @@ rest:
 
       - name: "HC1 Room Setpoint"
         unique_id: heatpump_hc1_room_setpoint
+        availability: "{{ 'heating_circuit_1' in value_json }}"
         value_template: "{{ value_json.heating_circuit_1.room_setpoint }}"
         unit_of_measurement: "°C"
         device_class: temperature
@@ -85,10 +88,12 @@ rest:
 
       - name: "HC1 Pump On"
         unique_id: heatpump_hc1_pump_on
+        availability: "{{ 'heating_circuit_1' in value_json }}"
         value_template: "{{ value_json.heating_circuit_1.pump_on }}"
 
       - name: "DHW Setpoint"
         unique_id: heatpump_dhw_setpoint
+        availability: "{{ 'domestic_hot_water' in value_json }}"
         value_template: "{{ value_json.domestic_hot_water.setpoint }}"
         unit_of_measurement: "°C"
         device_class: temperature
@@ -96,6 +101,7 @@ rest:
 
       - name: "DHW Actual Temperature"
         unique_id: heatpump_dhw_actual_temp
+        availability: "{{ 'domestic_hot_water' in value_json }}"
         value_template: "{{ value_json.domestic_hot_water.actual_temp }}"
         unit_of_measurement: "°C"
         device_class: temperature
