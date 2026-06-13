@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.1.2 — 2026-06-13
+
+### Fixed
+
+- HA template errors logged on every 502 response: added `availability` guards to
+  HC1 and DHW sensors so they go unavailable instead of failing template rendering
+  when the API returns an error body.
+- Network errors (unreachable heatpump) were silently swallowed; the add-on now
+  logs a `WARNING` with the actual error reason before returning 502.
+
 ## 0.1.1
 
 ### Fixed
