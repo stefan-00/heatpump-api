@@ -8,9 +8,9 @@
 #       heatpump: !include packages/heatpump.yaml
 #
 # Add to secrets.yaml:
-#   heatpump_status_url:  "http://192.168.1.x:8765/api/v1/status"
-#   heatpump_hc1_sp_url:  "http://192.168.1.x:8765/api/v1/circuits/hc1/setpoints"
-#   heatpump_hc2_sp_url:  "http://192.168.1.x:8765/api/v1/circuits/hc2/setpoints"
+#   heatpump_status_url:  "http://<heatpump-host>:8765/api/v1/status"
+#   heatpump_hc1_sp_url:  "http://<heatpump-host>:8765/api/v1/circuits/hc1/setpoints"
+#   heatpump_hc2_sp_url:  "http://<heatpump-host>:8765/api/v1/circuits/hc2/setpoints"
 
 # ── Status & setpoint sensors ─────────────────────────────────────────────────
 
