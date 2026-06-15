@@ -1,5 +1,23 @@
 # Changelog
 
+## 0.1.3 — 2026-06-15
+
+### Added
+
+- `request_timeout` add-on option (default `15`s, env var `HEATPUMP_TIMEOUT`) — the
+  read/overall HTTP timeout for requests to the heatpump, replacing the silent 5s
+  default that was too short for the slow embedded device. Connect timeout stays at 5s.
+
+### Fixed
+
+- Intermittent 502s on `/status` and setpoint reads: transient transport errors are now
+  retried up to 2× with backoff before surfacing, riding out brief device stalls.
+- Transport errors were logged with an empty message; they are now logged with `repr()`
+  (e.g. `ReadTimeout('')`) so the failure mode is identifiable.
+- Extended the `availability` + guarded `value_template` resilience to **all** HA status
+  and setpoint sensors, so any error body makes sensors `unavailable` without template-error
+  log spam (previously only HC1/DHW were guarded).
+
 ## 0.1.2 — 2026-06-13
 
 ### Fixed

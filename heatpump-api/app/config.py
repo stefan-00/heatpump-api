@@ -12,6 +12,7 @@ class Settings(BaseModel):
     username: str
     password: str  # sent to HPM as the 'code' form field (HPM "access code", max 8 chars)
     port: int = 8765
+    request_timeout: float = 15.0  # read/overall timeout (s) for HPM requests; device is slow
 
 
 def _load() -> Settings:
@@ -24,6 +25,7 @@ def _load() -> Settings:
             username=os.environ["HEATPUMP_USERNAME"],
             password=os.environ["HEATPUMP_PASSWORD"],
             port=int(os.environ.get("PORT", "8765")),
+            request_timeout=float(os.environ.get("HEATPUMP_TIMEOUT", "15.0")),
         )
     except KeyError as e:
         raise RuntimeError(

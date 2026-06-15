@@ -17,16 +17,24 @@ The service SHALL expose a `GET /api/v1/status` endpoint that returns the curren
 - **WHEN** `GET /api/v1/status` is called but the heatpump web UI cannot be reached
 - **THEN** the service returns HTTP 502 with a JSON error body describing the upstream failure
 
-### Requirement: Control endpoints
-The service SHALL expose control endpoints under `POST /api/v1/control/` that allow callers to change heatpump settings. Initial endpoints SHALL cover: power on/off, operating mode, target temperature, and fan speed.
+### Requirement: Setpoint control endpoints
+The service SHALL expose writable heating-circuit setpoints under `GET` and `PATCH /api/v1/circuits/{circuit_id}/setpoints`, where `circuit_id` is `hc1` or `hc2`. A `PATCH` SHALL accept a JSON body containing one or more setpoint fields and SHALL validate each value against the device's accepted range before writing.
 
-#### Scenario: Valid control request
-- **WHEN** a `POST /api/v1/control/<command>` is made with a valid JSON body
-- **THEN** the service returns HTTP 200 with a confirmation JSON body
+#### Scenario: Read current setpoints
+- **WHEN** `GET /api/v1/circuits/hc1/setpoints` is called and the heatpump is reachable
+- **THEN** the service returns HTTP 200 with a JSON body of the current setpoint values
 
-#### Scenario: Malformed request body
-- **WHEN** the request body is missing required fields or contains invalid types
-- **THEN** the service returns HTTP 422 with a JSON body listing the validation errors
+#### Scenario: Write a valid setpoint
+- **WHEN** `PATCH /api/v1/circuits/hc1/setpoints` is called with a valid JSON body (e.g. `{"roomOT1": 21.0}`)
+- **THEN** the service writes the value to the device and returns HTTP 200 with the confirmed setpoints
+
+#### Scenario: Write an out-of-range setpoint
+- **WHEN** `PATCH /api/v1/circuits/{circuit_id}/setpoints` is called with a value outside the device's accepted range
+- **THEN** the service returns HTTP 422 with a JSON error body and does not write the value
+
+#### Scenario: Unknown circuit identifier
+- **WHEN** a request targets a `circuit_id` other than `hc1` or `hc2`
+- **THEN** the service returns an error response and does not attempt a device write
 
 ### Requirement: Structured error responses
 All error responses SHALL use a consistent JSON envelope with at minimum a `detail` field describing the error.

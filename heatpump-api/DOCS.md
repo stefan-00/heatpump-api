@@ -18,6 +18,7 @@ and dashboards can read and control the system.
 | `username` | Yes | HPM login username (typically `service`) |
 | `password` | Yes | HPM access code (up to 8 characters) |
 | `port` | No | Port the API listens on inside the add-on (default: `8765`) |
+| `request_timeout` | No | Read/overall timeout in seconds for each request to the heatpump (default: `15`). Raise it if your device is slow and you see intermittent 502s; the connect timeout is fixed at 5s. |
 
 > **Note:** The HPM access code is entered on the device's web UI login page as "access code".
 > It is not the same as a Wi-Fi or router password.

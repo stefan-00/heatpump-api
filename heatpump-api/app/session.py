@@ -11,6 +11,11 @@ logger = logging.getLogger(__name__)
 
 _SESSION_ID_RE = re.compile(r"sessionid=([A-F0-9]+)", re.IGNORECASE)
 
+# Transient transport errors are retried before surfacing as a 502; the HPM is a
+# slow embedded device that occasionally drops or stalls connections.
+_REQUEST_RETRIES = 2
+_RETRY_BACKOFF_S = 0.5
+
 
 class StartupError(Exception):
     pass
@@ -18,7 +23,12 @@ class StartupError(Exception):
 
 class SessionManager:
     def __init__(self) -> None:
-        self._client = httpx.AsyncClient(follow_redirects=False)
+        # Explicit timeout: the HPM default httpx 5s read timeout is too short for
+        # this slow embedded device. Connect stays short; read/overall is configurable.
+        self._client = httpx.AsyncClient(
+            follow_redirects=False,
+            timeout=httpx.Timeout(settings.request_timeout, connect=5.0),
+        )
         self._lock = asyncio.Lock()
         self._generation = 0
         self._session_id: str = ""
@@ -111,7 +121,20 @@ class SessionManager:
     async def _make_request(self, method: str, url: str, **kwargs) -> httpx.Response:
         params = dict(kwargs.pop("params", {}))
         params["sessionid"] = self._session_id
-        return await self._client.request(method, url, params=params, **kwargs)
+        last_exc: httpx.RequestError | None = None
+        for attempt in range(_REQUEST_RETRIES + 1):
+            try:
+                return await self._client.request(method, url, params=params, **kwargs)
+            except httpx.RequestError as e:
+                last_exc = e
+                if attempt < _REQUEST_RETRIES:
+                    logger.warning(
+                        "Transient transport error (attempt %d/%d) for %s %s: %r",
+                        attempt + 1, _REQUEST_RETRIES + 1, method, url, e,
+                    )
+                    await asyncio.sleep(_RETRY_BACKOFF_S * (attempt + 1))
+        assert last_exc is not None  # only reached after the loop exhausts retries
+        raise last_exc
 
     async def close(self) -> None:
         await self._client.aclose()

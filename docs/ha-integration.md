@@ -54,12 +54,12 @@ homeassistant:
 Add to `secrets.yaml` (one place to update if the IP ever changes):
 
 ```yaml
-heatpump_status_url:  "http://192.168.1.x:8765/api/v1/status"
-heatpump_hc1_sp_url:  "http://192.168.1.x:8765/api/v1/circuits/hc1/setpoints"
-heatpump_hc2_sp_url:  "http://192.168.1.x:8765/api/v1/circuits/hc2/setpoints"
+heatpump_status_url:  "http://<ha-host-ip>:8765/api/v1/status"
+heatpump_hc1_sp_url:  "http://<ha-host-ip>:8765/api/v1/circuits/hc1/setpoints"
+heatpump_hc2_sp_url:  "http://<ha-host-ip>:8765/api/v1/circuits/hc2/setpoints"
 ```
 
-Replace `192.168.1.x` with your HA host's LAN IP.
+Replace `<ha-host-ip>` with your HA host's LAN IP.
 
 ### Step 4 — Restart HA
 
@@ -79,6 +79,12 @@ A single poll of `/api/v1/status` every 30 seconds populates:
 - Heat pump: on/off, heating, outlet temp, return temp, frequency, error code
 - HC1: flow setpoint, flow temp, room setpoint, pump on/off
 - DHW: setpoint, actual temperature
+
+> **Resilience to API errors:** if the API returns an error body (e.g. a `502` with
+> `{"detail": ...}` when the heatpump is briefly unreachable), every sensor goes
+> **unavailable** rather than logging *"Template variable error"*. Each `value_template`
+> is guarded to short-circuit when its expected key is missing, so a transient upstream
+> error produces no log spam and the entities recover on the next successful poll.
 
 ### Setpoint sensors (12 entities)
 
