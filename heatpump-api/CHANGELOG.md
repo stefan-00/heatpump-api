@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.1.4 — 2026-06-15
+
+### Changed
+
+- Dropped the deprecated `armv7` architecture from the add-on manifest; the add-on
+  targets `aarch64` and `amd64` only. Silences the Supervisor's deprecated-arch warning.
+
 ## 0.1.3 — 2026-06-15
 
 ### Added
