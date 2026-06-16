@@ -27,7 +27,20 @@ GET http://<ha-host-ip>:8765/health
 
 The HPM device supports only one active session at a time. Use a minimum `scan_interval`
 of **30 seconds** to avoid saturating the session. Lower values risk interfering with
-the API's own session management.
+the API's own session management. The status resource polls every **30 s**; the two
+setpoint resources poll every **60 s**, since setpoints are writable configuration values
+that change rarely and their reads traverse the slower WEB-RC navigation path.
+
+## Fetch timeouts
+
+Setpoint reads and writes navigate the device's stateful WEB-RC pages, serialized on a
+single session, so they can take longer than HA's **default 10-second** fetch timeout.
+The package sets an explicit `timeout: 30` on every `rest` resource and every
+`rest_command` so slow-but-successful operations complete within one call instead of
+raising *"Timeout when calling resource"*. This is comfortably above the API's own
+per-request budget (default 15 s, the `request_timeout` add-on option). Note that the
+`timeout` on a `rest` resource covers reads only — write commands need their own
+`timeout` under `rest_command`.
 
 ---
 
@@ -81,10 +94,14 @@ A single poll of `/api/v1/status` every 30 seconds populates:
 - DHW: setpoint, actual temperature
 
 > **Resilience to API errors:** if the API returns an error body (e.g. a `502` with
-> `{"detail": ...}` when the heatpump is briefly unreachable), every sensor goes
-> **unavailable** rather than logging *"Template variable error"*. Each `value_template`
-> is guarded to short-circuit when its expected key is missing, so a transient upstream
-> error produces no log spam and the entities recover on the next successful poll.
+> `{"detail": ...}` when the heatpump is briefly unreachable), an empty/non-JSON body, or
+> nothing at all (a fetch timeout), every sensor goes **unavailable** rather than logging
+> template errors. Each `availability` template first guards `value_json is defined`
+> before testing its key — otherwise, when a poll times out and `value_json` is undefined,
+> rendering the availability template itself raises *"UndefinedError: 'value_json' is
+> undefined"*. Each `value_template` additionally short-circuits when its key is missing.
+> A transient upstream error therefore produces no log spam and the entities recover on
+> the next successful poll.
 
 ### Setpoint sensors (12 entities)
 
@@ -109,6 +126,11 @@ Number entities (sliders) for each setpoint on HC1 and HC2. When you set a value
 If the value is outside the device's accepted range, the API returns 422 and the entity
 state remains at the previous value.
 
+> **Availability:** each number entity guards its state with
+> `availability: "{{ has_value('sensor.<backing_sensor>') }}"`, so when the backing
+> setpoint sensor is `unavailable` (e.g. its poll timed out) the slider goes
+> **unavailable** instead of logging *"invalid number state: unavailable"*.
+
 ---
 
 ## Package structure (abbreviated)
@@ -119,16 +141,20 @@ state remains at the previous value.
 rest:
   - resource: !secret heatpump_status_url   # 14 status sensors
     scan_interval: 30
+    timeout: 30
     sensor:
       # operating mode, outdoor temp, heat pump stats, HC1, DHW ...
+      # each: availability: "{{ value_json is defined and 'heat_pump' in value_json }}"
 
   - resource: !secret heatpump_hc1_sp_url   # 6 HC1 setpoint sensors
-    scan_interval: 30
+    scan_interval: 60
+    timeout: 30
     sensor:
       # roomOT1, roomOT2, roomOT3, roomOT4, roomNO, roomSNOT ...
 
   - resource: !secret heatpump_hc2_sp_url   # 6 HC2 setpoint sensors
-    scan_interval: 30
+    scan_interval: 60
+    timeout: 30
     sensor:
       # roomOT1, roomOT2, roomOT3, roomOT4, roomNO, roomSNOT ...
 
@@ -137,12 +163,14 @@ rest_command:                                # 12 commands total (6 × HC1, 6 ×
     url: !secret heatpump_hc1_sp_url
     method: PATCH
     content_type: application/json
+    timeout: 30
     payload: '{"roomOT1": {{ value }}}'
   # heatpump_set_hc1_roomot2 ... heatpump_set_hc2_roomsnot ...
 
 template:
   - number:                                  # 12 slider entities (6 × HC1, 6 × HC2)
       - name: "HC1 Room OT1"
+        availability: "{{ has_value('sensor.hc1_setpoint_roomot1') }}"
         state: "{{ states('sensor.hc1_setpoint_roomot1') }}"
         set_value:
           action: rest_command.heatpump_set_hc1_roomot1

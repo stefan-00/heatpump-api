@@ -19,15 +19,16 @@ rest:
   # Status — 14 sensors from a single poll of /api/v1/status
   - resource: !secret heatpump_status_url
     scan_interval: 30
+    timeout: 30
     sensor:
       - name: "Heatpump Operating Mode"
         unique_id: heatpump_operating_mode
-        availability: "{{ 'operating_mode' in value_json }}"
+        availability: "{{ value_json is defined and 'operating_mode' in value_json }}"
         value_template: "{{ value_json.operating_mode if 'operating_mode' in value_json else none }}"
 
       - name: "Heatpump Outdoor Temperature"
         unique_id: heatpump_outdoor_temp
-        availability: "{{ 'outdoor_temp' in value_json }}"
+        availability: "{{ value_json is defined and 'outdoor_temp' in value_json }}"
         value_template: "{{ value_json.outdoor_temp if 'outdoor_temp' in value_json else none }}"
         unit_of_measurement: "°C"
         device_class: temperature
@@ -35,17 +36,17 @@ rest:
 
       - name: "Heat Pump On"
         unique_id: heatpump_hp_on
-        availability: "{{ 'heat_pump' in value_json }}"
+        availability: "{{ value_json is defined and 'heat_pump' in value_json }}"
         value_template: "{{ value_json.heat_pump.on if 'heat_pump' in value_json else none }}"
 
       - name: "Heat Pump Heating"
         unique_id: heatpump_hp_heating
-        availability: "{{ 'heat_pump' in value_json }}"
+        availability: "{{ value_json is defined and 'heat_pump' in value_json }}"
         value_template: "{{ value_json.heat_pump.heating if 'heat_pump' in value_json else none }}"
 
       - name: "Heat Pump Outlet Temperature"
         unique_id: heatpump_hp_outlet_temp
-        availability: "{{ 'heat_pump' in value_json }}"
+        availability: "{{ value_json is defined and 'heat_pump' in value_json }}"
         value_template: "{{ value_json.heat_pump.outlet_temp if 'heat_pump' in value_json else none }}"
         unit_of_measurement: "°C"
         device_class: temperature
@@ -53,7 +54,7 @@ rest:
 
       - name: "Heat Pump Return Temperature"
         unique_id: heatpump_hp_return_temp
-        availability: "{{ 'heat_pump' in value_json }}"
+        availability: "{{ value_json is defined and 'heat_pump' in value_json }}"
         value_template: "{{ value_json.heat_pump.return_temp if 'heat_pump' in value_json else none }}"
         unit_of_measurement: "°C"
         device_class: temperature
@@ -61,19 +62,19 @@ rest:
 
       - name: "Heat Pump Frequency"
         unique_id: heatpump_hp_frequency
-        availability: "{{ 'heat_pump' in value_json }}"
+        availability: "{{ value_json is defined and 'heat_pump' in value_json }}"
         value_template: "{{ value_json.heat_pump.frequency if 'heat_pump' in value_json else none }}"
         unit_of_measurement: "Hz"
         state_class: measurement
 
       - name: "Heat Pump Error Code"
         unique_id: heatpump_hp_error_code
-        availability: "{{ 'heat_pump' in value_json }}"
+        availability: "{{ value_json is defined and 'heat_pump' in value_json }}"
         value_template: "{{ value_json.heat_pump.error_code if 'heat_pump' in value_json else none }}"
 
       - name: "HC1 Flow Setpoint"
         unique_id: heatpump_hc1_flow_setpoint
-        availability: "{{ 'heating_circuit_1' in value_json }}"
+        availability: "{{ value_json is defined and 'heating_circuit_1' in value_json }}"
         value_template: "{{ value_json.heating_circuit_1.flow_setpoint if 'heating_circuit_1' in value_json else none }}"
         unit_of_measurement: "°C"
         device_class: temperature
@@ -81,7 +82,7 @@ rest:
 
       - name: "HC1 Flow Temperature"
         unique_id: heatpump_hc1_flow_temp
-        availability: "{{ 'heating_circuit_1' in value_json }}"
+        availability: "{{ value_json is defined and 'heating_circuit_1' in value_json }}"
         value_template: "{{ value_json.heating_circuit_1.flow_temp if 'heating_circuit_1' in value_json else none }}"
         unit_of_measurement: "°C"
         device_class: temperature
@@ -89,7 +90,7 @@ rest:
 
       - name: "HC1 Room Setpoint"
         unique_id: heatpump_hc1_room_setpoint
-        availability: "{{ 'heating_circuit_1' in value_json }}"
+        availability: "{{ value_json is defined and 'heating_circuit_1' in value_json }}"
         value_template: "{{ value_json.heating_circuit_1.room_setpoint if 'heating_circuit_1' in value_json else none }}"
         unit_of_measurement: "°C"
         device_class: temperature
@@ -97,12 +98,12 @@ rest:
 
       - name: "HC1 Pump On"
         unique_id: heatpump_hc1_pump_on
-        availability: "{{ 'heating_circuit_1' in value_json }}"
+        availability: "{{ value_json is defined and 'heating_circuit_1' in value_json }}"
         value_template: "{{ value_json.heating_circuit_1.pump_on if 'heating_circuit_1' in value_json else none }}"
 
       - name: "DHW Setpoint"
         unique_id: heatpump_dhw_setpoint
-        availability: "{{ 'domestic_hot_water' in value_json }}"
+        availability: "{{ value_json is defined and 'domestic_hot_water' in value_json }}"
         value_template: "{{ value_json.domestic_hot_water.setpoint if 'domestic_hot_water' in value_json else none }}"
         unit_of_measurement: "°C"
         device_class: temperature
@@ -110,7 +111,7 @@ rest:
 
       - name: "DHW Actual Temperature"
         unique_id: heatpump_dhw_actual_temp
-        availability: "{{ 'domestic_hot_water' in value_json }}"
+        availability: "{{ value_json is defined and 'domestic_hot_water' in value_json }}"
         value_template: "{{ value_json.domestic_hot_water.actual_temp if 'domestic_hot_water' in value_json else none }}"
         unit_of_measurement: "°C"
         device_class: temperature
@@ -121,12 +122,13 @@ rest:
   # roomOT1–roomOT4 are optional breakpoints; the availability template suppresses
   # "state is non-numeric" log errors when a breakpoint is not configured (API returns null).
   - resource: !secret heatpump_hc1_sp_url
-    scan_interval: 30
+    scan_interval: 60
+    timeout: 30
     sensor:
       - name: "HC1 Setpoint roomOT1"
         unique_id: heatpump_hc1_sp_roomot1
         value_template: "{{ value_json.roomOT1 if value_json.roomOT1 is defined and value_json.roomOT1 is not none else none }}"
-        availability: "{{ value_json.roomOT1 is defined and value_json.roomOT1 is not none }}"
+        availability: "{{ value_json is defined and value_json.roomOT1 is defined and value_json.roomOT1 is not none }}"
         unit_of_measurement: "°C"
         device_class: temperature
         state_class: measurement
@@ -134,7 +136,7 @@ rest:
       - name: "HC1 Setpoint roomOT2"
         unique_id: heatpump_hc1_sp_roomot2
         value_template: "{{ value_json.roomOT2 if value_json.roomOT2 is defined and value_json.roomOT2 is not none else none }}"
-        availability: "{{ value_json.roomOT2 is defined and value_json.roomOT2 is not none }}"
+        availability: "{{ value_json is defined and value_json.roomOT2 is defined and value_json.roomOT2 is not none }}"
         unit_of_measurement: "°C"
         device_class: temperature
         state_class: measurement
@@ -142,7 +144,7 @@ rest:
       - name: "HC1 Setpoint roomOT3"
         unique_id: heatpump_hc1_sp_roomot3
         value_template: "{{ value_json.roomOT3 if value_json.roomOT3 is defined and value_json.roomOT3 is not none else none }}"
-        availability: "{{ value_json.roomOT3 is defined and value_json.roomOT3 is not none }}"
+        availability: "{{ value_json is defined and value_json.roomOT3 is defined and value_json.roomOT3 is not none }}"
         unit_of_measurement: "°C"
         device_class: temperature
         state_class: measurement
@@ -150,14 +152,14 @@ rest:
       - name: "HC1 Setpoint roomOT4"
         unique_id: heatpump_hc1_sp_roomot4
         value_template: "{{ value_json.roomOT4 if value_json.roomOT4 is defined and value_json.roomOT4 is not none else none }}"
-        availability: "{{ value_json.roomOT4 is defined and value_json.roomOT4 is not none }}"
+        availability: "{{ value_json is defined and value_json.roomOT4 is defined and value_json.roomOT4 is not none }}"
         unit_of_measurement: "°C"
         device_class: temperature
         state_class: measurement
 
       - name: "HC1 Setpoint roomNO"
         unique_id: heatpump_hc1_sp_roomno
-        availability: "{{ 'roomNO' in value_json }}"
+        availability: "{{ value_json is defined and 'roomNO' in value_json }}"
         value_template: "{{ value_json.roomNO if 'roomNO' in value_json else none }}"
         unit_of_measurement: "°C"
         device_class: temperature
@@ -165,7 +167,7 @@ rest:
 
       - name: "HC1 Setpoint roomSNOT"
         unique_id: heatpump_hc1_sp_roomsnot
-        availability: "{{ 'roomSNOT' in value_json }}"
+        availability: "{{ value_json is defined and 'roomSNOT' in value_json }}"
         value_template: "{{ value_json.roomSNOT if 'roomSNOT' in value_json else none }}"
         unit_of_measurement: "°C"
         device_class: temperature
@@ -173,12 +175,13 @@ rest:
 
   # HC2 setpoints
   - resource: !secret heatpump_hc2_sp_url
-    scan_interval: 30
+    scan_interval: 60
+    timeout: 30
     sensor:
       - name: "HC2 Setpoint roomOT1"
         unique_id: heatpump_hc2_sp_roomot1
         value_template: "{{ value_json.roomOT1 if value_json.roomOT1 is defined and value_json.roomOT1 is not none else none }}"
-        availability: "{{ value_json.roomOT1 is defined and value_json.roomOT1 is not none }}"
+        availability: "{{ value_json is defined and value_json.roomOT1 is defined and value_json.roomOT1 is not none }}"
         unit_of_measurement: "°C"
         device_class: temperature
         state_class: measurement
@@ -186,7 +189,7 @@ rest:
       - name: "HC2 Setpoint roomOT2"
         unique_id: heatpump_hc2_sp_roomot2
         value_template: "{{ value_json.roomOT2 if value_json.roomOT2 is defined and value_json.roomOT2 is not none else none }}"
-        availability: "{{ value_json.roomOT2 is defined and value_json.roomOT2 is not none }}"
+        availability: "{{ value_json is defined and value_json.roomOT2 is defined and value_json.roomOT2 is not none }}"
         unit_of_measurement: "°C"
         device_class: temperature
         state_class: measurement
@@ -194,7 +197,7 @@ rest:
       - name: "HC2 Setpoint roomOT3"
         unique_id: heatpump_hc2_sp_roomot3
         value_template: "{{ value_json.roomOT3 if value_json.roomOT3 is defined and value_json.roomOT3 is not none else none }}"
-        availability: "{{ value_json.roomOT3 is defined and value_json.roomOT3 is not none }}"
+        availability: "{{ value_json is defined and value_json.roomOT3 is defined and value_json.roomOT3 is not none }}"
         unit_of_measurement: "°C"
         device_class: temperature
         state_class: measurement
@@ -202,14 +205,14 @@ rest:
       - name: "HC2 Setpoint roomOT4"
         unique_id: heatpump_hc2_sp_roomot4
         value_template: "{{ value_json.roomOT4 if value_json.roomOT4 is defined and value_json.roomOT4 is not none else none }}"
-        availability: "{{ value_json.roomOT4 is defined and value_json.roomOT4 is not none }}"
+        availability: "{{ value_json is defined and value_json.roomOT4 is defined and value_json.roomOT4 is not none }}"
         unit_of_measurement: "°C"
         device_class: temperature
         state_class: measurement
 
       - name: "HC2 Setpoint roomNO"
         unique_id: heatpump_hc2_sp_roomno
-        availability: "{{ 'roomNO' in value_json }}"
+        availability: "{{ value_json is defined and 'roomNO' in value_json }}"
         value_template: "{{ value_json.roomNO if 'roomNO' in value_json else none }}"
         unit_of_measurement: "°C"
         device_class: temperature
@@ -217,7 +220,7 @@ rest:
 
       - name: "HC2 Setpoint roomSNOT"
         unique_id: heatpump_hc2_sp_roomsnot
-        availability: "{{ 'roomSNOT' in value_json }}"
+        availability: "{{ value_json is defined and 'roomSNOT' in value_json }}"
         value_template: "{{ value_json.roomSNOT if 'roomSNOT' in value_json else none }}"
         unit_of_measurement: "°C"
         device_class: temperature
@@ -231,36 +234,42 @@ rest_command:
     url: !secret heatpump_hc1_sp_url
     method: PATCH
     content_type: application/json
+    timeout: 30
     payload: '{"roomOT1": {{ value }}}'
 
   heatpump_set_hc1_roomot2:
     url: !secret heatpump_hc1_sp_url
     method: PATCH
     content_type: application/json
+    timeout: 30
     payload: '{"roomOT2": {{ value }}}'
 
   heatpump_set_hc1_roomot3:
     url: !secret heatpump_hc1_sp_url
     method: PATCH
     content_type: application/json
+    timeout: 30
     payload: '{"roomOT3": {{ value }}}'
 
   heatpump_set_hc1_roomot4:
     url: !secret heatpump_hc1_sp_url
     method: PATCH
     content_type: application/json
+    timeout: 30
     payload: '{"roomOT4": {{ value }}}'
 
   heatpump_set_hc1_roomno:
     url: !secret heatpump_hc1_sp_url
     method: PATCH
     content_type: application/json
+    timeout: 30
     payload: '{"roomNO": {{ value }}}'
 
   heatpump_set_hc1_roomsnot:
     url: !secret heatpump_hc1_sp_url
     method: PATCH
     content_type: application/json
+    timeout: 30
     payload: '{"roomSNOT": {{ value }}}'
 
   # HC2
@@ -268,36 +277,42 @@ rest_command:
     url: !secret heatpump_hc2_sp_url
     method: PATCH
     content_type: application/json
+    timeout: 30
     payload: '{"roomOT1": {{ value }}}'
 
   heatpump_set_hc2_roomot2:
     url: !secret heatpump_hc2_sp_url
     method: PATCH
     content_type: application/json
+    timeout: 30
     payload: '{"roomOT2": {{ value }}}'
 
   heatpump_set_hc2_roomot3:
     url: !secret heatpump_hc2_sp_url
     method: PATCH
     content_type: application/json
+    timeout: 30
     payload: '{"roomOT3": {{ value }}}'
 
   heatpump_set_hc2_roomot4:
     url: !secret heatpump_hc2_sp_url
     method: PATCH
     content_type: application/json
+    timeout: 30
     payload: '{"roomOT4": {{ value }}}'
 
   heatpump_set_hc2_roomno:
     url: !secret heatpump_hc2_sp_url
     method: PATCH
     content_type: application/json
+    timeout: 30
     payload: '{"roomNO": {{ value }}}'
 
   heatpump_set_hc2_roomsnot:
     url: !secret heatpump_hc2_sp_url
     method: PATCH
     content_type: application/json
+    timeout: 30
     payload: '{"roomSNOT": {{ value }}}'
 
 # ── Template number entities (writable sliders) ───────────────────────────────
@@ -359,6 +374,7 @@ template:
 
       - name: "HC1 Room Normal"
         unique_id: heatpump_hc1_num_roomno
+        availability: "{{ has_value('sensor.hc1_setpoint_roomno') }}"
         state: "{{ states('sensor.hc1_setpoint_roomno') }}"
         min: 2
         max: 50
@@ -371,6 +387,7 @@ template:
 
       - name: "HC1 Room Standby"
         unique_id: heatpump_hc1_num_roomsnot
+        availability: "{{ has_value('sensor.hc1_setpoint_roomsnot') }}"
         state: "{{ states('sensor.hc1_setpoint_roomsnot') }}"
         min: 2
         max: 50
@@ -436,6 +453,7 @@ template:
 
       - name: "HC2 Room Normal"
         unique_id: heatpump_hc2_num_roomno
+        availability: "{{ has_value('sensor.hc2_setpoint_roomno') }}"
         state: "{{ states('sensor.hc2_setpoint_roomno') }}"
         min: 2
         max: 50
@@ -448,6 +466,7 @@ template:
 
       - name: "HC2 Room Standby"
         unique_id: heatpump_hc2_num_roomsnot
+        availability: "{{ has_value('sensor.hc2_setpoint_roomsnot') }}"
         state: "{{ states('sensor.hc2_setpoint_roomsnot') }}"
         min: 2
         max: 50

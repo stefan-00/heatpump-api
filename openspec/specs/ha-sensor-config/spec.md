@@ -52,12 +52,36 @@ A `packages/heatpump.yaml` package file SHALL provide ready-to-use HA configurat
 
 ### Requirement: Sensors degrade gracefully when the API returns an error body
 
-When the API returns an error response (e.g. HTTP 502 with a JSON body such as `{"detail": "..."}`) instead of the expected payload, the configured HA sensor entities SHALL become `unavailable` rather than logging template errors or showing stale/invalid values. Each sensor in `packages/heatpump.yaml` SHALL use an `availability` template that checks for the presence of its expected key, AND a `value_template` that itself short-circuits to `none` when the expected key is absent — because HA's `rest` platform still renders `value_template` even when `availability` is false.
+When the API returns an error response (e.g. HTTP 502 with a JSON body such as `{"detail": "..."}`), an empty/non-JSON body, or no response at all (a fetch timeout), the configured HA sensor entities SHALL become `unavailable` rather than logging template errors or showing stale/invalid values. Each sensor in `packages/heatpump.yaml` SHALL use an `availability` template that FIRST guards `value_json is defined` and THEN checks for the presence of its expected key, AND a `value_template` that itself short-circuits to `none` when the expected key is absent — because HA's `rest` platform still renders `value_template` even when `availability` is false. The leading `value_json is defined` guard is required because when a poll times out or returns a non-JSON/empty body `value_json` is undefined entirely, and dereferencing it (`value_json.key`) or testing membership (`'key' in value_json`) raises `UndefinedError` while rendering the `availability` template itself.
 
 #### Scenario: API returns an error body during a poll
 - **WHEN** HA polls `GET /api/v1/status` (or a setpoints endpoint) and the response body lacks the expected keys (e.g. an error envelope)
 - **THEN** the affected sensor entities become `unavailable` and no `Template variable error` is logged for the missing keys
 
+#### Scenario: A poll times out or returns no parseable body
+- **WHEN** HA polls an endpoint and the fetch times out or the body is empty/non-JSON, so `value_json` is undefined
+- **THEN** the affected sensor entities become `unavailable` and no `UndefinedError` is logged for the `availability` template
+
 #### Scenario: API returns a valid payload
 - **WHEN** HA polls an endpoint and the response contains the expected keys
 - **THEN** each sensor's `availability` template evaluates true and its `value_template` renders the value as normal
+
+### Requirement: Writable number entities degrade gracefully when their source sensor is unavailable
+
+Each writable `template` number entity in `packages/heatpump.yaml` SHALL guard its state with an `availability` template that checks `has_value(...)` on the backing setpoint sensor, so that when the sensor is `unavailable` (e.g. its poll timed out) the number entity becomes `unavailable` rather than attempting to coerce the literal string `unavailable` into a number. This applies to all twelve number entities, including `roomNO`/`roomSNOT` (`Room Normal`/`Room Standby`), not only the optional `roomOT1`–`roomOT4` breakpoints.
+
+#### Scenario: Source setpoint sensor is unavailable
+- **WHEN** a number entity's backing sensor (e.g. `sensor.hc1_setpoint_roomno`) is `unavailable`
+- **THEN** the number entity becomes `unavailable` and no `invalid number state: unavailable` validation error is logged
+
+### Requirement: HA fetch timeouts accommodate slow setpoint reads and writes
+
+The HPM setpoint endpoints traverse stateful WEB-RC navigation serialized on a single device session, so a read or write can take substantially longer than the default HA fetch timeout of 10 seconds. `packages/heatpump.yaml` SHALL therefore set an explicit `timeout` on every `rest` resource and on every `rest_command`, sized comfortably above the API's per-request budget (default 15 seconds), so that slow-but-successful setpoint operations complete within a single HA call instead of being aborted. The setpoint `rest` resources MAY poll on a longer `scan_interval` than the status resource, because setpoints are writable configuration values that change rarely, which also reduces contention on the device session.
+
+#### Scenario: A setpoint write takes longer than the HA default timeout
+- **WHEN** a user sets a number entity and the `rest_command` PATCH to the setpoint endpoint takes longer than 10 seconds but completes within the configured `timeout`
+- **THEN** HA completes the call successfully and no `Timeout when calling resource` error is logged
+
+#### Scenario: A setpoint read takes longer than the HA default timeout
+- **WHEN** HA polls a setpoint resource and the response takes longer than 10 seconds but completes within the configured `timeout`
+- **THEN** the fetch succeeds and the setpoint sensors update normally
