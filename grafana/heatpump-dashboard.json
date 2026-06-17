@@ -83,12 +83,15 @@
             {
               "type": "value",
               "options": {
-                "0": { "text": "Off", "index": 0, "color": "semi-dark-red" },
-                "1": { "text": "On", "index": 1, "color": "green" }
+                "0": { "text": "Off", "index": 0 },
+                "1": { "text": "On", "index": 1 }
               }
             }
           ],
-          "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }] }
+          "thresholds": { "mode": "absolute", "steps": [
+            { "color": "red", "value": null },
+            { "color": "green", "value": 1 }
+          ] }
         },
         "overrides": []
       },
