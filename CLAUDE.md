@@ -2,6 +2,10 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Git workflow
+
+Solo project — commit and push directly to `main`. Do not create a feature branch or open a PR unless explicitly asked.
+
 ## Project
 
 A reverse-engineering proxy for a **Panasonic HPM-800B7F WEB-RC** whole-house heating controller. Exposes the device's browser-based web UI as a REST API, packaged as a Home Assistant add-on (HAOS). Built with Python 3.11 + FastAPI + httpx.
