@@ -34,7 +34,7 @@ rest:
         device_class: temperature
         state_class: measurement
 
-      - name: "Heat Pump Outlet Temperature"
+      - name: "Heatpump Outlet Temperature"
         unique_id: heatpump_hp_outlet_temp
         availability: "{{ value_json is defined and 'heat_pump' in value_json }}"
         value_template: "{{ value_json.heat_pump.outlet_temp if 'heat_pump' in value_json else none }}"
@@ -42,7 +42,7 @@ rest:
         device_class: temperature
         state_class: measurement
 
-      - name: "Heat Pump Return Temperature"
+      - name: "Heatpump Return Temperature"
         unique_id: heatpump_hp_return_temp
         availability: "{{ value_json is defined and 'heat_pump' in value_json }}"
         value_template: "{{ value_json.heat_pump.return_temp if 'heat_pump' in value_json else none }}"
@@ -50,14 +50,14 @@ rest:
         device_class: temperature
         state_class: measurement
 
-      - name: "Heat Pump Frequency"
+      - name: "Heatpump Frequency"
         unique_id: heatpump_hp_frequency
         availability: "{{ value_json is defined and 'heat_pump' in value_json }}"
         value_template: "{{ value_json.heat_pump.frequency if 'heat_pump' in value_json else none }}"
         unit_of_measurement: "Hz"
         state_class: measurement
 
-      - name: "Heat Pump Error Code"
+      - name: "Heatpump Error Code"
         unique_id: heatpump_hp_error_code
         availability: "{{ value_json is defined and 'heat_pump' in value_json }}"
         value_template: "{{ value_json.heat_pump.error_code if 'heat_pump' in value_json else none }}"
@@ -105,7 +105,7 @@ rest:
     # On/off states — binary_sensor so history/InfluxDB record clean 0/1 values
     # (a string "True"/"False" sensor is not usefully graphable).
     binary_sensor:
-      - name: "Heat Pump On"
+      - name: "Heatpump On"
         unique_id: heatpump_hp_on
         availability: "{{ value_json is defined and 'heat_pump' in value_json }}"
         value_template: "{{ 'ON' if value_json.heat_pump.on else 'OFF' }}"
@@ -113,7 +113,7 @@ rest:
         payload_off: "OFF"
         device_class: running
 
-      - name: "Heat Pump Heating"
+      - name: "Heatpump Heating"
         unique_id: heatpump_hp_heating
         availability: "{{ value_json is defined and 'heat_pump' in value_json }}"
         value_template: "{{ 'ON' if value_json.heat_pump.heating else 'OFF' }}"
