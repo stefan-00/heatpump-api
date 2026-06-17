@@ -1,0 +1,304 @@
+{
+  "__inputs": [
+    {
+      "name": "DS_INFLUXDB",
+      "label": "InfluxDB",
+      "description": "Sigenergy / HA InfluxDB 1.x data source",
+      "type": "datasource",
+      "pluginId": "influxdb",
+      "pluginName": "InfluxDB"
+    }
+  ],
+  "__requires": [
+    { "type": "datasource", "id": "influxdb", "name": "InfluxDB", "version": "1.0.0" },
+    { "type": "panel", "id": "timeseries", "name": "Time series", "version": "" },
+    { "type": "panel", "id": "state-timeline", "name": "State timeline", "version": "" },
+    { "type": "panel", "id": "stat", "name": "Stat", "version": "" },
+    { "type": "panel", "id": "gauge", "name": "Gauge", "version": "" }
+  ],
+  "annotations": {
+    "list": [
+      {
+        "builtIn": 1,
+        "datasource": { "type": "grafana", "uid": "-- Grafana --" },
+        "enable": true,
+        "hide": true,
+        "iconColor": "rgba(0, 211, 255, 1)",
+        "name": "Annotations & Alerts",
+        "type": "dashboard"
+      }
+    ]
+  },
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 1,
+  "id": null,
+  "links": [],
+  "liveNow": false,
+  "panels": [
+    {
+      "datasource": { "type": "influxdb", "uid": "${DS_INFLUXDB}" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "mappings": [],
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }] },
+          "unit": "kwatth",
+          "decimals": 1
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 4, "w": 24, "x": 0, "y": 0 },
+      "id": 10,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "auto",
+        "orientation": "horizontal",
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+        "textMode": "value_and_name"
+      },
+      "title": "Today's Energy",
+      "type": "stat",
+      "targets": [
+        { "datasource": { "type": "influxdb", "uid": "${DS_INFLUXDB}" }, "alias": "PV", "query": "SELECT last(\"value\") FROM \"kWh\" WHERE (\"entity_id\" = 'sigen_plant_daily_pv_energy') AND $timeFilter", "rawQuery": true, "resultFormat": "time_series", "refId": "A" },
+        { "datasource": { "type": "influxdb", "uid": "${DS_INFLUXDB}" }, "alias": "Load", "query": "SELECT last(\"value\") FROM \"kWh\" WHERE (\"entity_id\" = 'sigen_plant_daily_load_consumption') AND $timeFilter", "rawQuery": true, "resultFormat": "time_series", "refId": "B" },
+        { "datasource": { "type": "influxdb", "uid": "${DS_INFLUXDB}" }, "alias": "Batt Charge", "query": "SELECT last(\"value\") FROM \"kWh\" WHERE (\"entity_id\" = 'sigen_plant_daily_battery_charge_energy') AND $timeFilter", "rawQuery": true, "resultFormat": "time_series", "refId": "C" },
+        { "datasource": { "type": "influxdb", "uid": "${DS_INFLUXDB}" }, "alias": "Batt Discharge", "query": "SELECT last(\"value\") FROM \"kWh\" WHERE (\"entity_id\" = 'sigen_plant_daily_battery_discharge_energy') AND $timeFilter", "rawQuery": true, "resultFormat": "time_series", "refId": "D" },
+        { "datasource": { "type": "influxdb", "uid": "${DS_INFLUXDB}" }, "alias": "Grid Import", "query": "SELECT last(\"value\") FROM \"kWh\" WHERE (\"entity_id\" = 'sigen_plant_daily_grid_import_energy') AND $timeFilter", "rawQuery": true, "resultFormat": "time_series", "refId": "E" },
+        { "datasource": { "type": "influxdb", "uid": "${DS_INFLUXDB}" }, "alias": "Grid Export", "query": "SELECT last(\"value\") FROM \"kWh\" WHERE (\"entity_id\" = 'sigen_plant_daily_grid_export_energy') AND $timeFilter", "rawQuery": true, "resultFormat": "time_series", "refId": "F" }
+      ]
+    },
+    {
+      "datasource": { "type": "influxdb", "uid": "${DS_INFLUXDB}" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": {
+            "axisLabel": "kW",
+            "drawStyle": "line",
+            "fillOpacity": 12,
+            "gradientMode": "opacity",
+            "lineInterpolation": "smooth",
+            "lineWidth": 2,
+            "showPoints": "never",
+            "spanNulls": true
+          },
+          "unit": "kwatt"
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 9, "w": 24, "x": 0, "y": 4 },
+      "id": 1,
+      "options": {
+        "legend": { "calcs": ["min", "max", "mean", "lastNotNull"], "displayMode": "table", "placement": "bottom", "showLegend": true },
+        "tooltip": { "mode": "multi", "sort": "desc" }
+      },
+      "title": "Power Flow (PV / Load / Battery / Grid)",
+      "type": "timeseries",
+      "targets": [
+        {
+          "datasource": { "type": "influxdb", "uid": "${DS_INFLUXDB}" },
+          "alias": "$tag_entity_id",
+          "query": "SELECT mean(\"value\") FROM \"kW\" WHERE (\"entity_id\" =~ /^(sigen_plant_pv_power|sigen_plant_consumed_power|sigen_plant_battery_power|sigen_plant_grid_active_power)$/) AND $timeFilter GROUP BY time($__interval), \"entity_id\" fill(previous)",
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "datasource": { "type": "influxdb", "uid": "${DS_INFLUXDB}" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": {
+            "axisLabel": "%",
+            "drawStyle": "line",
+            "fillOpacity": 20,
+            "gradientMode": "opacity",
+            "lineInterpolation": "smooth",
+            "lineWidth": 2,
+            "showPoints": "never",
+            "spanNulls": true
+          },
+          "max": 100,
+          "min": 0,
+          "unit": "percent"
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 8, "w": 16, "x": 0, "y": 13 },
+      "id": 2,
+      "options": {
+        "legend": { "calcs": ["min", "max", "lastNotNull"], "displayMode": "table", "placement": "bottom", "showLegend": true },
+        "tooltip": { "mode": "single", "sort": "none" }
+      },
+      "title": "Battery State of Charge",
+      "type": "timeseries",
+      "targets": [
+        {
+          "datasource": { "type": "influxdb", "uid": "${DS_INFLUXDB}" },
+          "alias": "State of Charge",
+          "query": "SELECT mean(\"value\") FROM \"%\" WHERE (\"entity_id\" = 'sigen_plant_battery_state_of_charge') AND $timeFilter GROUP BY time($__interval) fill(previous)",
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "datasource": { "type": "influxdb", "uid": "${DS_INFLUXDB}" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "mappings": [],
+          "max": 100,
+          "min": 0,
+          "thresholds": { "mode": "absolute", "steps": [
+            { "color": "red", "value": null },
+            { "color": "orange", "value": 20 },
+            { "color": "green", "value": 50 }
+          ] },
+          "unit": "percent"
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 8, "w": 8, "x": 16, "y": 13 },
+      "id": 7,
+      "options": {
+        "orientation": "auto",
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+        "showThresholdLabels": false,
+        "showThresholdMarkers": true
+      },
+      "title": "Battery SoC / SoH",
+      "type": "gauge",
+      "targets": [
+        { "datasource": { "type": "influxdb", "uid": "${DS_INFLUXDB}" }, "alias": "SoC", "query": "SELECT last(\"value\") FROM \"%\" WHERE (\"entity_id\" = 'sigen_plant_battery_state_of_charge') AND $timeFilter", "rawQuery": true, "resultFormat": "time_series", "refId": "A" },
+        { "datasource": { "type": "influxdb", "uid": "${DS_INFLUXDB}" }, "alias": "SoH", "query": "SELECT last(\"value\") FROM \"%\" WHERE (\"entity_id\" = 'sigen_plant_battery_state_of_health') AND $timeFilter", "rawQuery": true, "resultFormat": "time_series", "refId": "B" }
+      ]
+    },
+    {
+      "datasource": { "type": "influxdb", "uid": "${DS_INFLUXDB}" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "custom": { "fillOpacity": 80, "lineWidth": 0 },
+          "mappings": [
+            { "type": "value", "options": {
+              "0": { "text": "Off", "index": 0, "color": "dark-gray" },
+              "1": { "text": "On", "index": 1, "color": "green" }
+            } }
+          ],
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }] }
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 6, "w": 24, "x": 0, "y": 21 },
+      "id": 5,
+      "options": {
+        "legend": { "displayMode": "list", "placement": "bottom", "showLegend": true },
+        "mergeValues": true,
+        "rowHeight": 0.9,
+        "showValue": "never",
+        "tooltip": { "mode": "single", "sort": "none" }
+      },
+      "title": "System Activity",
+      "type": "state-timeline",
+      "targets": [
+        { "datasource": { "type": "influxdb", "uid": "${DS_INFLUXDB}" }, "alias": "PV Generating", "query": "SELECT last(\"value\") FROM \"binary_sensor.sigen_plant_pv_generating\" WHERE $timeFilter GROUP BY time($__interval) fill(previous)", "rawQuery": true, "resultFormat": "time_series", "refId": "A" },
+        { "datasource": { "type": "influxdb", "uid": "${DS_INFLUXDB}" }, "alias": "Battery Charging", "query": "SELECT last(\"value\") FROM \"binary_sensor.sigen_plant_battery_charging\" WHERE $timeFilter GROUP BY time($__interval) fill(previous)", "rawQuery": true, "resultFormat": "time_series", "refId": "B" },
+        { "datasource": { "type": "influxdb", "uid": "${DS_INFLUXDB}" }, "alias": "Battery Discharging", "query": "SELECT last(\"value\") FROM \"binary_sensor.sigen_plant_battery_discharging\" WHERE $timeFilter GROUP BY time($__interval) fill(previous)", "rawQuery": true, "resultFormat": "time_series", "refId": "C" },
+        { "datasource": { "type": "influxdb", "uid": "${DS_INFLUXDB}" }, "alias": "Importing from Grid", "query": "SELECT last(\"value\") FROM \"binary_sensor.sigen_plant_importing_from_grid\" WHERE $timeFilter GROUP BY time($__interval) fill(previous)", "rawQuery": true, "resultFormat": "time_series", "refId": "D" },
+        { "datasource": { "type": "influxdb", "uid": "${DS_INFLUXDB}" }, "alias": "Exporting to Grid", "query": "SELECT last(\"value\") FROM \"binary_sensor.sigen_plant_exporting_to_grid\" WHERE $timeFilter GROUP BY time($__interval) fill(previous)", "rawQuery": true, "resultFormat": "time_series", "refId": "E" }
+      ]
+    },
+    {
+      "datasource": { "type": "influxdb", "uid": "${DS_INFLUXDB}" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": {
+            "axisLabel": "kW",
+            "drawStyle": "line",
+            "fillOpacity": 10,
+            "lineInterpolation": "smooth",
+            "lineWidth": 2,
+            "showPoints": "never",
+            "spanNulls": true
+          },
+          "unit": "kwatt"
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 27 },
+      "id": 3,
+      "options": {
+        "legend": { "calcs": ["max", "mean"], "displayMode": "table", "placement": "bottom", "showLegend": true },
+        "tooltip": { "mode": "multi", "sort": "desc" }
+      },
+      "title": "PV String Power",
+      "type": "timeseries",
+      "targets": [
+        {
+          "datasource": { "type": "influxdb", "uid": "${DS_INFLUXDB}" },
+          "alias": "$tag_entity_id",
+          "query": "SELECT mean(\"value\") FROM \"kW\" WHERE (\"entity_id\" =~ /^sigen_inverter_pv[123]_power$/) AND $timeFilter GROUP BY time($__interval), \"entity_id\" fill(previous)",
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "datasource": { "type": "influxdb", "uid": "${DS_INFLUXDB}" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": {
+            "axisLabel": "°C",
+            "drawStyle": "line",
+            "fillOpacity": 8,
+            "lineInterpolation": "smooth",
+            "lineWidth": 2,
+            "showPoints": "never",
+            "spanNulls": true
+          },
+          "unit": "celsius"
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 27 },
+      "id": 4,
+      "options": {
+        "legend": { "calcs": ["max", "mean", "lastNotNull"], "displayMode": "table", "placement": "bottom", "showLegend": true },
+        "tooltip": { "mode": "multi", "sort": "desc" }
+      },
+      "title": "Temperatures",
+      "type": "timeseries",
+      "targets": [
+        {
+          "datasource": { "type": "influxdb", "uid": "${DS_INFLUXDB}" },
+          "alias": "$tag_entity_id",
+          "query": "SELECT mean(\"value\") FROM \"°C\" WHERE (\"entity_id\" =~ /^(sigen_plant_ess_average_cell_temperature|sigen_inverter_pcs_internal_temperature|sigen_inverter_battery_average_cell_temperature)$/) AND $timeFilter GROUP BY time($__interval), \"entity_id\" fill(previous)",
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "refId": "A"
+        }
+      ]
+    }
+  ],
+  "refresh": "1m",
+  "schemaVersion": 39,
+  "style": "dark",
+  "tags": ["sigenergy", "solar", "battery"],
+  "templating": { "list": [] },
+  "time": { "from": "now-2d", "to": "now" },
+  "timepicker": {},
+  "timezone": "browser",
+  "title": "Sigenergy Solar & Battery",
+  "uid": "sigenergy-overview",
+  "version": 1,
+  "weekStart": ""
+}
