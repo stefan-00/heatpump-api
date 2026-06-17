@@ -34,16 +34,6 @@ rest:
         device_class: temperature
         state_class: measurement
 
-      - name: "Heat Pump On"
-        unique_id: heatpump_hp_on
-        availability: "{{ value_json is defined and 'heat_pump' in value_json }}"
-        value_template: "{{ value_json.heat_pump.on if 'heat_pump' in value_json else none }}"
-
-      - name: "Heat Pump Heating"
-        unique_id: heatpump_hp_heating
-        availability: "{{ value_json is defined and 'heat_pump' in value_json }}"
-        value_template: "{{ value_json.heat_pump.heating if 'heat_pump' in value_json else none }}"
-
       - name: "Heat Pump Outlet Temperature"
         unique_id: heatpump_hp_outlet_temp
         availability: "{{ value_json is defined and 'heat_pump' in value_json }}"
@@ -96,11 +86,6 @@ rest:
         device_class: temperature
         state_class: measurement
 
-      - name: "HC1 Pump On"
-        unique_id: heatpump_hc1_pump_on
-        availability: "{{ value_json is defined and 'heating_circuit_1' in value_json }}"
-        value_template: "{{ value_json.heating_circuit_1.pump_on if 'heating_circuit_1' in value_json else none }}"
-
       - name: "DHW Setpoint"
         unique_id: heatpump_dhw_setpoint
         availability: "{{ value_json is defined and 'domestic_hot_water' in value_json }}"
@@ -116,6 +101,33 @@ rest:
         unit_of_measurement: "°C"
         device_class: temperature
         state_class: measurement
+
+    # On/off states — binary_sensor so history/InfluxDB record clean 0/1 values
+    # (a string "True"/"False" sensor is not usefully graphable).
+    binary_sensor:
+      - name: "Heat Pump On"
+        unique_id: heatpump_hp_on
+        availability: "{{ value_json is defined and 'heat_pump' in value_json }}"
+        value_template: "{{ 'ON' if value_json.heat_pump.on else 'OFF' }}"
+        payload_on: "ON"
+        payload_off: "OFF"
+        device_class: running
+
+      - name: "Heat Pump Heating"
+        unique_id: heatpump_hp_heating
+        availability: "{{ value_json is defined and 'heat_pump' in value_json }}"
+        value_template: "{{ 'ON' if value_json.heat_pump.heating else 'OFF' }}"
+        payload_on: "ON"
+        payload_off: "OFF"
+        device_class: heat
+
+      - name: "HC1 Pump On"
+        unique_id: heatpump_hc1_pump_on
+        availability: "{{ value_json is defined and 'heating_circuit_1' in value_json }}"
+        value_template: "{{ 'ON' if value_json.heating_circuit_1.pump_on else 'OFF' }}"
+        payload_on: "ON"
+        payload_off: "OFF"
+        device_class: running
 
   # HC1 setpoints — writable heating curve breakpoints + normal/standby
   #
