@@ -15,17 +15,28 @@ class HeatPumpUnit(BaseModel):
 class HeatingCircuit(BaseModel):
     flow_setpoint: float
     flow_temp: float
-    room_setpoint: float
+    room_setpoint: float  # nominal (roomNO)
+    room_ot1: float | None = None
+    room_ot2: float | None = None
     pump_on: bool
 
 
 class HeatingCircuit2(BaseModel):
-    """HC2 status (pool heating). Only the parameters confirmed readable on
-    v3.rsp are exposed; HC2 has no separately documented flow setpoint / pump
-    state, so those are omitted rather than guessed."""
+    """HC2 status (pool heating) from v3.rsp.
+
+    flow_temp (27) and outdoor_temp (23, delOutT) are confirmed against the
+    device. The remaining fields are parsed best-effort and resolve to None if
+    the param is not present, so a missing/incorrect ID can never break the
+    confirmed fields. room_setpoint is the nominal setpoint (roomNO = 32, per
+    device verification)."""
 
     flow_temp: float
     outdoor_temp: float
+    flow_setpoint: float | None = None
+    room_setpoint: float | None = None
+    room_ot1: float | None = None
+    room_ot2: float | None = None
+    pump_on: bool | None = None
 
 
 class DomesticHotWater(BaseModel):

@@ -75,8 +75,8 @@ v90 (3-param: state/mode/timer only).
 | 6   | Operating mode | `nom. oper. OT1` | str | — |
 | 7   | Operating state | `normal` | str | — |
 | 8   | Timer status | `timer-OT1 ----------` | str | — |
-| 17  | Room setpoint OT1 | `20.0 °C` | float | — |
-| 169 | Room setpoint OT2 | `20.0 °C` | float | — |
+| 17  | Room setpoint OT1 | `20.0 °C` | float | ✓ `hc1.room_ot1` |
+| 169 | Room setpoint OT2 | `20.0 °C` | float | ✓ `hc1.room_ot2` |
 
 
 ## Heating circuit 2 (pool heating) — v3.rsp
@@ -86,17 +86,17 @@ As of 2026-05-22, HC2 is in **OT2 mode** but pump is off because `delOutT` (20.5
 
 | ID  | Label | Current | Type | API |
 |-----|-------|---------|------|-----|
-| 23  | Delayed outdoor temp (delOutT) | `20.5 °C` | float | — |
-| 26  | Flow setpoint | `18.0 °C` | float | — |
-| 27  | Flow temperature | `17.1 °C` | float | — |
-| 29  | Pump on | `off` | bool | — |
+| 23  | Delayed outdoor temp (delOutT) | `20.5 °C` | float | ✓ `hc2.outdoor_temp` |
+| 26  | Flow setpoint | `18.0 °C` | float | ✓ `hc2.flow_setpoint` |
+| 27  | Flow temperature | `17.1 °C` | float | ✓ `hc2.flow_temp` |
+| 29  | Pump on | `off` | bool | ✓ `hc2.pump_on` |
 | 30  | Pump speed | `0 %` | int | — |
 | 20  | Operating mode | `nom. oper. OT2` | str | — |
 | 21  | Operating state | `normal` | str | — |
 | 22  | Timer status | `timer-OT2 ----------` | str | — |
-| 31  | Room setpoint OT1 | `45.0 °C` | float | — |
-| 32  | Room setpoint OT2 | `19.0 °C` | float | — |
-| 170 | Room setpoint OT3 | `30.0 °C` | float | — |
+| 31  | Room setpoint OT1 | `45.0 °C` | float | ✓ `hc2.room_ot1` |
+| 32  | Room setpoint (nominal, roomNO) | `19.0 °C` | float | ✓ `hc2.room_setpoint` |
+| 170 | Room setpoint OT2 | `30.0 °C` | float | ✓ `hc2.room_ot2` |
 
 
 ## Domestic hot water — v107000.rsp

@@ -17,11 +17,17 @@ def extract_param(html: str, param_id: str) -> str:
 
 
 def parse_float(text: str) -> float:
-    """Extract the first number from a value string such as ' 23 °C' or '22.6 °C'."""
-    match = re.search(r"[-+]?\d+\.?\d*", text)
-    if not match:
+    """Extract the value number from a string such as ' 23 °C', '22.6 °C', or a
+    label-prefixed 'roomOT1 20.0 °C'.
+
+    HPM value strings may be 'LABEL value unit'; the label can itself contain
+    digits (e.g. 'roomOT1'), so the trailing number is the actual value. Using
+    the last number is consistent with parse_bool/parse_last_token taking the
+    last token (units like °C/Hz/% never contain digits)."""
+    matches = re.findall(r"[-+]?\d+\.?\d*", text)
+    if not matches:
         raise ValueError(f"No numeric value in {text!r}")
-    return float(match.group())
+    return float(matches[-1])
 
 
 def parse_bool(text: str) -> bool:
@@ -40,6 +46,24 @@ def parse_last_token(text: str) -> str:
     return tokens[-1] if tokens else ""
 
 
+def _optional_param(html: str, param_id: str) -> str | None:
+    """Like extract_param but returns None instead of raising when absent."""
+    try:
+        return extract_param(html, param_id)
+    except ValueError:
+        return None
+
+
+def _optional_float(html: str, param_id: str) -> float | None:
+    text = _optional_param(html, param_id)
+    return parse_float(text) if text is not None else None
+
+
+def _optional_bool(html: str, param_id: str) -> bool | None:
+    text = _optional_param(html, param_id)
+    return parse_bool(text) if text is not None else None
+
+
 def parse_hp1(html: str) -> HeatPumpUnit:
     """Parse heat pump 1 status from v21.rsp HTML."""
     return HeatPumpUnit(
@@ -53,20 +77,36 @@ def parse_hp1(html: str) -> HeatPumpUnit:
 
 
 def parse_hc1(html: str) -> HeatingCircuit:
-    """Parse heating circuit 1 status from v30.rsp HTML."""
+    """Parse heating circuit 1 status from v30.rsp HTML.
+
+    room_setpoint (18) is the nominal setpoint; room_ot1 (17) / room_ot2 (169)
+    are the weather-curve breakpoints, parsed best-effort.
+    """
     return HeatingCircuit(
         flow_setpoint=parse_float(extract_param(html, "12")),
         flow_temp=parse_float(extract_param(html, "13")),
         room_setpoint=parse_float(extract_param(html, "18")),
+        room_ot1=_optional_float(html, "17"),
+        room_ot2=_optional_float(html, "169"),
         pump_on=parse_bool(extract_param(html, "15")),
     )
 
 
 def parse_hc2(html: str) -> HeatingCircuit2:
-    """Parse heating circuit 2 status from v3.rsp HTML."""
+    """Parse heating circuit 2 status from v3.rsp HTML.
+
+    flow_temp (27) and outdoor_temp (23, delOutT) are confirmed. The rest are
+    best-effort (None when absent): flow_setpoint (26), room_setpoint nominal
+    (32, roomNO), room_ot1 (31), room_ot2 (170), pump_on (29).
+    """
     return HeatingCircuit2(
         flow_temp=parse_float(extract_param(html, "27")),
         outdoor_temp=parse_float(extract_param(html, "23")),
+        flow_setpoint=_optional_float(html, "26"),
+        room_setpoint=_optional_float(html, "32"),
+        room_ot1=_optional_float(html, "31"),
+        room_ot2=_optional_float(html, "170"),
+        pump_on=_optional_bool(html, "29"),
     )
 
 
