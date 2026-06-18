@@ -19,6 +19,15 @@ class HeatingCircuit(BaseModel):
     pump_on: bool
 
 
+class HeatingCircuit2(BaseModel):
+    """HC2 status (pool heating). Only the parameters confirmed readable on
+    v3.rsp are exposed; HC2 has no separately documented flow setpoint / pump
+    state, so those are omitted rather than guessed."""
+
+    flow_temp: float
+    outdoor_temp: float
+
+
 class DomesticHotWater(BaseModel):
     setpoint: float
     actual_temp: float
@@ -29,6 +38,7 @@ class SystemStatus(BaseModel):
     outdoor_temp: float
     heat_pump: HeatPumpUnit
     heating_circuit_1: HeatingCircuit
+    heating_circuit_2: HeatingCircuit2 | None = None
     domestic_hot_water: DomesticHotWater
 
 

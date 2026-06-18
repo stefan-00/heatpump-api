@@ -1,6 +1,6 @@
 import re
 
-from .models import DomesticHotWater, HeatingCircuit, HeatPumpUnit
+from .models import DomesticHotWater, HeatingCircuit, HeatingCircuit2, HeatPumpUnit
 
 
 def extract_param(html: str, param_id: str) -> str:
@@ -59,6 +59,14 @@ def parse_hc1(html: str) -> HeatingCircuit:
         flow_temp=parse_float(extract_param(html, "13")),
         room_setpoint=parse_float(extract_param(html, "18")),
         pump_on=parse_bool(extract_param(html, "15")),
+    )
+
+
+def parse_hc2(html: str) -> HeatingCircuit2:
+    """Parse heating circuit 2 status from v3.rsp HTML."""
+    return HeatingCircuit2(
+        flow_temp=parse_float(extract_param(html, "27")),
+        outdoor_temp=parse_float(extract_param(html, "23")),
     )
 
 
