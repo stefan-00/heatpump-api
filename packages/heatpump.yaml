@@ -86,6 +86,41 @@ rest:
         device_class: temperature
         state_class: measurement
 
+      # HC2 (pool heating) status. heating_circuit_2 is best-effort in the API
+      # and may be null; flow_setpoint/room_setpoint may also be null on their
+      # own — both are guarded so the entity goes unavailable rather than erroring.
+      - name: "HC2 Flow Setpoint"
+        unique_id: heatpump_hc2_flow_setpoint
+        availability: "{{ value_json is defined and value_json.heating_circuit_2 is defined and value_json.heating_circuit_2 is not none and value_json.heating_circuit_2.flow_setpoint is not none }}"
+        value_template: "{{ value_json.heating_circuit_2.flow_setpoint if (value_json.heating_circuit_2 is defined and value_json.heating_circuit_2 is not none) else none }}"
+        unit_of_measurement: "°C"
+        device_class: temperature
+        state_class: measurement
+
+      - name: "HC2 Flow Temperature"
+        unique_id: heatpump_hc2_flow_temp
+        availability: "{{ value_json is defined and value_json.heating_circuit_2 is defined and value_json.heating_circuit_2 is not none and value_json.heating_circuit_2.flow_temp is not none }}"
+        value_template: "{{ value_json.heating_circuit_2.flow_temp if (value_json.heating_circuit_2 is defined and value_json.heating_circuit_2 is not none) else none }}"
+        unit_of_measurement: "°C"
+        device_class: temperature
+        state_class: measurement
+
+      - name: "HC2 Room Setpoint"
+        unique_id: heatpump_hc2_room_setpoint
+        availability: "{{ value_json is defined and value_json.heating_circuit_2 is defined and value_json.heating_circuit_2 is not none and value_json.heating_circuit_2.room_setpoint is not none }}"
+        value_template: "{{ value_json.heating_circuit_2.room_setpoint if (value_json.heating_circuit_2 is defined and value_json.heating_circuit_2 is not none) else none }}"
+        unit_of_measurement: "°C"
+        device_class: temperature
+        state_class: measurement
+
+      - name: "HC2 Outdoor Temperature"
+        unique_id: heatpump_hc2_outdoor_temp
+        availability: "{{ value_json is defined and value_json.heating_circuit_2 is defined and value_json.heating_circuit_2 is not none and value_json.heating_circuit_2.outdoor_temp is not none }}"
+        value_template: "{{ value_json.heating_circuit_2.outdoor_temp if (value_json.heating_circuit_2 is defined and value_json.heating_circuit_2 is not none) else none }}"
+        unit_of_measurement: "°C"
+        device_class: temperature
+        state_class: measurement
+
       - name: "DHW Setpoint"
         unique_id: heatpump_dhw_setpoint
         availability: "{{ value_json is defined and 'domestic_hot_water' in value_json }}"
