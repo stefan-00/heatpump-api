@@ -142,6 +142,31 @@ def parse_hc_setpoints(html: str) -> dict[str, float]:
     return result
 
 
+_FLOW_LIMIT_FIELDS = ("active", "minFl", "maxFl")
+
+
+def parse_flow_limit(html: str) -> dict[str, float]:
+    """Extract active/minFl/maxFl from the HC2 setpoint-limitation page.
+
+    The page (params 2.5.2.3.6.x) renders one row per parameter, e.g.
+    'active 0', 'minFl 2.0 °C', 'maxFl 2.0 °C'. 'active' is 0/1; the flow
+    temps are floats. Returns the trailing number per field (consistent with
+    parse_float — labels may contain digits, units never do)."""
+    pane = _mainpane(html)
+    result: dict[str, float] = {}
+    for tr in re.findall(r"<tr[^>]*>(.*?)</tr>", pane, re.DOTALL | re.IGNORECASE):
+        text = re.sub(r"<[^>]+>", " ", tr)
+        text = re.sub(r"\s+", " ", text).strip()
+        for name in _FLOW_LIMIT_FIELDS:
+            if re.search(rf"\b{name}\b", text):
+                after = text.split(name, 1)[1]
+                m = re.search(r"[-+]?\d+\.?\d*", after)
+                if m:
+                    result[name] = float(m.group())
+                break
+    return result
+
+
 def parse_operating_mode(html: str) -> str:
     """Return the current operating mode label from the MS0 selector in v0.rsp HTML.
 

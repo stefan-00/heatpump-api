@@ -75,3 +75,25 @@ class HcSetpointsPatch(BaseModel):
     roomOT4: float | None = None
     roomNO: float | None = None
     roomSNOT: float | None = None
+
+
+class FlowLimit(BaseModel):
+    """HC2 flow-temperature limitation ("setpoint limitation" function).
+
+    When active, the device clamps the effective flow setpoint to
+    [min_flow, max_flow], so min_flow acts as a floor that lets HC2 (pool
+    heating) demand heat regardless of the weather-curve / outdoor temperature.
+    """
+
+    active: bool
+    min_flow: float
+    max_flow: float
+
+
+class FlowLimitPatch(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    # The single HA-facing knob: the flow-temperature floor (minFl). The client
+    # enables the limitation and manages max_flow (the device requires
+    # max_flow > min_flow) in the same write.
+    flow_setpoint: float
