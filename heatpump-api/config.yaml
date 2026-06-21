@@ -1,5 +1,5 @@
 name: Heatpump API
-version: "0.1.8"
+version: "0.1.9"
 slug: heatpump_api
 description: REST API proxy for heatpump web UI, enabling Home Assistant automation
 url: "https://github.com/stefan-00/heatpump-api"

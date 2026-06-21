@@ -46,5 +46,5 @@ async def get_flow_limit(circuit_id: str) -> FlowLimit:
 @router.patch("/flow-limit", response_model=FlowLimit)
 async def patch_flow_limit(circuit_id: str, body: FlowLimitPatch) -> FlowLimit:
     _require_hc2(circuit_id)
-    await client.set_flow_limit(body.flow_setpoint)
+    await client.set_flow_limit(flow_setpoint=body.flow_setpoint, active=body.active)
     return await client.get_flow_limit()

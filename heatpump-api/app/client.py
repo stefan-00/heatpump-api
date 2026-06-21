@@ -199,54 +199,67 @@ class HeatpumpClient:
             max_flow=values["maxFl"],
         )
 
-    async def set_flow_limit(self, flow_setpoint: float) -> None:
-        """Enable the HC2 flow limitation and set its floor in one operation.
+    async def set_flow_limit(
+        self, flow_setpoint: float | None = None, active: bool | None = None
+    ) -> None:
+        """Write the HC2 flow limitation.
 
-        Writes minFl = flow_setpoint, ensures maxFl > minFl (the device rejects
-        maxFl <= minFl), and sets active = 1. maxFl is left at its current value
-        if already above the floor, otherwise raised to the default cap.
+        When flow_setpoint is given, writes minFl = flow_setpoint and ensures
+        maxFl > minFl (the device rejects maxFl <= minFl; maxFl is kept if
+        already above the floor, otherwise raised to the default cap). The
+        limitation is enabled/disabled per `active`; when `active` is None it
+        defaults to enabled iff a floor was written, so a lone flow_setpoint
+        both sets the floor and enables. At least one argument must be set.
         """
+        if flow_setpoint is None and active is None:
+            raise HTTPException(status_code=422, detail="Nothing to set: provide flow_setpoint and/or active")
+
         base = settings.heatpump_url.rstrip("/")
         async with self._webrc_lock:
             try:
                 resp = await self._webrc_navigate(base, _HC2_FLOWLIMIT_LABELS)
                 current = parse_flow_limit(resp.content.decode("latin-1"))
 
-                # Range-check the floor against the device's accepted minFl range.
-                info_resp = await self._session.request(
-                    "GET", f"{base}/info.rsp",
-                    params={"branchnr": str(_FLOWLIMIT_POSITION["minFl"]), "level": _FLOWLIMIT_LEVEL},
-                )
-                info_html = info_resp.content.decode("latin-1")
-                lo_match = re.search(r"Lower limit:.*?(-?\d+\.\d+)\s*°", info_html, re.DOTALL | re.I)
-                hi_match = re.search(r"Upper limit:.*?(-?\d+\.\d+)\s*°", info_html, re.DOTALL | re.I)
-                lo = float(lo_match.group(1)) if lo_match else 2.0
-                hi = float(hi_match.group(1)) if hi_match else 160.0
-                if not lo <= flow_setpoint <= hi:
-                    raise HTTPException(
-                        status_code=422,
-                        detail=f"flow_setpoint {flow_setpoint} out of device range [{lo}, {hi}]",
+                if flow_setpoint is not None:
+                    # Range-check the floor against the device's accepted minFl range.
+                    info_resp = await self._session.request(
+                        "GET", f"{base}/info.rsp",
+                        params={"branchnr": str(_FLOWLIMIT_POSITION["minFl"]), "level": _FLOWLIMIT_LEVEL},
                     )
+                    info_html = info_resp.content.decode("latin-1")
+                    lo_match = re.search(r"Lower limit:.*?(-?\d+\.\d+)\s*°", info_html, re.DOTALL | re.I)
+                    hi_match = re.search(r"Upper limit:.*?(-?\d+\.\d+)\s*°", info_html, re.DOTALL | re.I)
+                    lo = float(lo_match.group(1)) if lo_match else 2.0
+                    hi = float(hi_match.group(1)) if hi_match else 160.0
+                    if not lo <= flow_setpoint <= hi:
+                        raise HTTPException(
+                            status_code=422,
+                            detail=f"flow_setpoint {flow_setpoint} out of device range [{lo}, {hi}]",
+                        )
 
-                # Pick a max_flow strictly greater than the floor (device constraint).
-                cur_max = current.get("maxFl", 0.0)
-                target_max = cur_max if cur_max > flow_setpoint else _FLOWLIMIT_MAX_CAP
-                if target_max <= flow_setpoint:
-                    target_max = min(hi, flow_setpoint + 5.0)
-                if not flow_setpoint < target_max <= hi:
-                    raise HTTPException(
-                        status_code=422,
-                        detail=(
-                            f"Cannot satisfy max_flow > min_flow within device range "
-                            f"[{lo}, {hi}] for flow_setpoint {flow_setpoint}"
-                        ),
-                    )
+                    # Pick a max_flow strictly greater than the floor (device constraint).
+                    cur_max = current.get("maxFl", 0.0)
+                    target_max = cur_max if cur_max > flow_setpoint else _FLOWLIMIT_MAX_CAP
+                    if target_max <= flow_setpoint:
+                        target_max = min(hi, flow_setpoint + 5.0)
+                    if not flow_setpoint < target_max <= hi:
+                        raise HTTPException(
+                            status_code=422,
+                            detail=(
+                                f"Cannot satisfy max_flow > min_flow within device range "
+                                f"[{lo}, {hi}] for flow_setpoint {flow_setpoint}"
+                            ),
+                        )
 
-                # Order matters: raise maxFl first (so minFl never transiently
-                # exceeds maxFl), then set the floor, then enable.
-                await self._execset_flowlimit(base, "maxFl", f"{target_max:.1f}")
-                await self._execset_flowlimit(base, "minFl", f"{flow_setpoint:.1f}")
-                await self._execset_flowlimit(base, "active", "1")
+                    # Order matters: raise maxFl first (so minFl never transiently
+                    # exceeds maxFl), then set the floor.
+                    await self._execset_flowlimit(base, "maxFl", f"{target_max:.1f}")
+                    await self._execset_flowlimit(base, "minFl", f"{flow_setpoint:.1f}")
+
+                # Explicit `active` wins; otherwise enable (a lone floor write
+                # both sets and enables). At least one arg is always set here.
+                effective_active = active if active is not None else (flow_setpoint is not None)
+                await self._execset_flowlimit(base, "active", "1" if effective_active else "0")
             except HTTPException:
                 raise
             except httpx.RequestError as e:

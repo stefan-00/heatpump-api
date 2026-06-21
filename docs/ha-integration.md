@@ -142,23 +142,25 @@ limitation* function fixes this: a `minFl` floor forces the effective flow setpo
 The API exposes this as a **single knob**:
 
 - `GET /api/v1/circuits/hc2/flow-limit` → `{ "active": bool, "min_flow": float, "max_flow": float }`
-- `PATCH /api/v1/circuits/hc2/flow-limit` with `{ "flow_setpoint": 30 }` → in one request sets
-  `minFl = 30`, ensures `maxFl > minFl` (the device rejects `maxFl <= minFl`; `maxFl` is
-  raised to the 65 °C cap when needed), and enables the limit (`active = 1`).
+- `PATCH /api/v1/circuits/hc2/flow-limit` accepts an optional `flow_setpoint` and/or an
+  optional `active` (at least one required):
+  - `{ "flow_setpoint": 30 }` → sets `minFl = 30`, ensures `maxFl > minFl` (the device rejects
+    `maxFl <= minFl`; `maxFl` is raised to the 65 °C cap when needed), and enables the limit
+    (`active = 1`) — one call sets the floor *and* turns it on, no separate toggle.
+  - `{ "active": false }` → disables the limitation without changing the floor.
+  - `{ "active": true }` → enables it with the current floor.
 
-So one PATCH both enables pool heating and sets its floor — no separate toggle. Values are
-validated against the device range (2–160 °C) and the `maxFl > minFl` constraint; an invalid
-value returns 422 and writes nothing. The endpoint is **HC2-only** (HC1 → 400).
-
-> **Note:** turning the limit *off* is not exposed by the API (PATCH only enables, by design);
-> do that from the HPM web UI (`heatC. 2 → function → setpoint limitation → active = 0`).
+Values are validated against the device range (2–160 °C) and the `maxFl > minFl` constraint;
+an invalid or empty body returns 422 and writes nothing. The endpoint is **HC2-only** (HC1 → 400).
 
 This is wired into `packages/heatpump.yaml` (requires the `heatpump_hc2_flowlimit_url` secret).
-It polls `/api/v1/circuits/hc2/flow-limit` every 60 s and provides:
+It polls `/api/v1/circuits/hc2/flow-limit` every 300 s (the limit changes rarely) and provides:
 
 - **`number.hc2_pool_flow_setpoint`** — the slider for the pool flow floor. Its state reflects
   the confirmed `min_flow`; setting it sends `PATCH {"flow_setpoint": <value>}`, which writes
   `min_flow` and enables the limit in one call.
+- **`switch.hc2_flow_limit`** — enable/disable the limitation (`PATCH {"active": …}`), state
+  backed by `binary_sensor.hc2_flow_limit_active`.
 - **`sensor.hc2_flow_limit_min`** / **`sensor.hc2_flow_limit_max`** — current `min_flow`/`max_flow`.
 - **`binary_sensor.hc2_flow_limit_active`** — whether the device limitation is currently enabled.
 

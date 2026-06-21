@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, model_validator
 
 
 class HeatPumpUnit(BaseModel):
@@ -93,7 +93,15 @@ class FlowLimit(BaseModel):
 class FlowLimitPatch(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    # The single HA-facing knob: the flow-temperature floor (minFl). The client
-    # enables the limitation and manages max_flow (the device requires
-    # max_flow > min_flow) in the same write.
-    flow_setpoint: float
+    # flow_setpoint is the flow-temperature floor (minFl); writing it manages
+    # max_flow (the device requires max_flow > min_flow) and, unless `active` is
+    # given explicitly, enables the limitation. `active` toggles the limitation
+    # on/off independently. At least one of the two must be provided.
+    flow_setpoint: float | None = None
+    active: bool | None = None
+
+    @model_validator(mode="after")
+    def _require_one(self) -> "FlowLimitPatch":
+        if self.flow_setpoint is None and self.active is None:
+            raise ValueError("provide at least one of 'flow_setpoint' or 'active'")
+        return self

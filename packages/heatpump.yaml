@@ -275,7 +275,7 @@ rest:
   # device limitation is enabled. Setting the floor (via the number below) both
   # writes min_flow and enables the limit in one call.
   - resource: !secret heatpump_hc2_flowlimit_url
-    scan_interval: 60
+    scan_interval: 300
     timeout: 30
     sensor:
       - name: "HC2 Flow Limit Min"
@@ -398,6 +398,21 @@ rest_command:
     content_type: application/json
     timeout: 30
     payload: '{"flow_setpoint": {{ value }}}'
+
+  # Enable/disable the limitation without changing the floor.
+  heatpump_enable_hc2_flow_limit:
+    url: !secret heatpump_hc2_flowlimit_url
+    method: PATCH
+    content_type: application/json
+    timeout: 30
+    payload: '{"active": true}'
+
+  heatpump_disable_hc2_flow_limit:
+    url: !secret heatpump_hc2_flowlimit_url
+    method: PATCH
+    content_type: application/json
+    timeout: 30
+    payload: '{"active": false}'
 
 # ── Template number entities (writable sliders) ───────────────────────────────
 
@@ -577,3 +592,14 @@ template:
           action: rest_command.heatpump_set_hc2_flow_limit
           data:
             value: "{{ value }}"
+
+  # ── Switch: enable/disable the HC2 flow limitation ──────────────────────────
+  - switch:
+      - name: "HC2 Flow Limit"
+        unique_id: heatpump_hc2_flow_limit_switch
+        availability: "{{ has_value('binary_sensor.hc2_flow_limit_active') }}"
+        state: "{{ is_state('binary_sensor.hc2_flow_limit_active', 'on') }}"
+        turn_on:
+          action: rest_command.heatpump_enable_hc2_flow_limit
+        turn_off:
+          action: rest_command.heatpump_disable_hc2_flow_limit
