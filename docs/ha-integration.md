@@ -131,6 +131,43 @@ state remains at the previous value.
 > setpoint sensor is `unavailable` (e.g. its poll timed out) the slider goes
 > **unavailable** instead of logging *"invalid number state: unavailable"*.
 
+### Pool flow-limit control (HC2)
+
+HC2 (pool heating) is weather-compensated, so at high outdoor temperatures the heating
+curve collapses the flow setpoint and the pool stops heating. The device's *setpoint
+limitation* function fixes this: a `minFl` floor forces the effective flow setpoint to
+`max(curve, minFl)`, independent of the outdoor temperature.
+
+The API exposes this as a **single knob**:
+
+- `GET /api/v1/circuits/hc2/flow-limit` → `{ "active": bool, "min_flow": float, "max_flow": float }`
+- `PATCH /api/v1/circuits/hc2/flow-limit` with `{ "flow_setpoint": 30 }` → in one request sets
+  `minFl = 30`, ensures `maxFl > minFl` (the device rejects `maxFl <= minFl`; `maxFl` is
+  raised to the 65 °C cap when needed), and enables the limit (`active = 1`).
+
+So one PATCH both enables pool heating and sets its floor — no separate toggle. Values are
+validated against the device range (2–160 °C) and the `maxFl > minFl` constraint; an invalid
+value returns 422 and writes nothing. The endpoint is **HC2-only** (HC1 → 400).
+
+> **Note:** turning the limit *off* is not exposed by the API (PATCH only enables, by design);
+> do that from the HPM web UI (`heatC. 2 → function → setpoint limitation → active = 0`).
+
+This is not wired into the shipped `packages/heatpump.yaml` yet. To drive it from HA, add a
+`secrets.yaml` URL and a `rest_command` (optionally fronted by an `input_number`):
+
+```yaml
+# secrets.yaml
+heatpump_hc2_flowlimit_url: "http://<ha-host-ip>:8765/api/v1/circuits/hc2/flow-limit"
+
+# packages/heatpump.yaml
+rest_command:
+  pool_flow_setpoint:
+    url: !secret heatpump_hc2_flowlimit_url
+    method: PATCH
+    content_type: "application/json"
+    payload: '{"flow_setpoint": {{ value }} }'
+```
+
 ---
 
 ## Package structure (abbreviated)

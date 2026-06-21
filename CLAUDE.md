@@ -23,10 +23,12 @@ heatpump-api/          # application code
     client.py          # HPM requests: SystemStatus reads, WEB-RC setpoint reads/writes (HeatpumpClient)
     parsers.py         # parses HPM HTML view pages into Pydantic models
     models.py          # Pydantic models: SystemStatus, HeatPumpUnit, HeatingCircuit,
-                       #   DomesticHotWater, ErrorResponse, HcSetpoints, HcSetpointsPatch
+                       #   DomesticHotWater, ErrorResponse, HcSetpoints, HcSetpointsPatch,
+                       #   FlowLimit, FlowLimitPatch
     routers/
       status.py        # GET /api/v1/status
       setpoints.py     # GET/PATCH /api/v1/circuits/{circuit_id}/setpoints
+                       #   GET/PATCH /api/v1/circuits/hc2/flow-limit (HC2 only)
 openspec/              # spec-driven change workflow
 ```
 
@@ -73,13 +75,14 @@ The HPM-800B7F serves classic HTML pages. There is no JSON API.
 - **Value parsing**: values are embedded in anchor tags — `<a href="vinfo.rsp?...&id=111:6.6.6"> 23 °C</a>`; `parsers.py` extracts by numeric param ID
 - **Write (standard params)**: `POST /execgrset.rsp` with `id`, `val`, `pv`, `sessionid`; mode switch via `POST /ms.rsp` — not yet used by the API
 - **Write (WEB-RC setpoints)**: after navigating to the target page, `POST /execset.rsp` with `val`, `Set=OK`, `sessionid` (in POST body), `branchnr=N`, `level=4`, `id=N`; the device returns 302 for both success and failure (same redirect URL), so range is pre-validated against `info.rsp?branchnr=N&level=4` before writing
+- **Write (WEB-RC HC2 flow limitation)**: the `heatC. 2 → function → setpoint limitation` page (params `2.5.2.3.6.x`) sits one level deeper than the setpoints page, so its params use `level=5` (positions 1=`active`, 2=`minFl`, 3=`maxFl`) for both `info.rsp` range reads and `execset` writes. The device **rejects `maxFl <= minFl`**, so writes raise `maxFl` first, then `minFl`, then `active`. Backs the `flow-limit` endpoint; `minFl` floors the effective flow setpoint to `max(curve, minFl)` so HC2 (pool) heats regardless of outdoor temp
 - **WEB-RC access elevation**: `GET /webfb.rsp?sessionid=SID` → `POST /getcode.rsp` with `code=4444&Set=OK&branchnr=1&level=0&sessionid=SID` (body) → follow 302 redirect as-is (do NOT append sessionid again — the redirect URL already contains it); **both `GET /webfb.rsp` and `Set=OK` are mandatory** — omitting either causes the server to return 302 but leaves the session unelevated (setpoints page shows only SP-Flow instead of all six setpoints)
 - **WEB-RC navigation**: `branchnr` values in `menue.rsp` links are not stable across sessions; always navigate by matching the link label text (`heatC. 1` has a space before the digit), never by hard-coded `(branchnr, level)` pairs
 
 ## Architecture notes
 
 - `session.py` uses a generation counter + `asyncio.Lock` so concurrent session-expiry responses trigger only one re-login
-- `parsers.py` functions (`parse_hp1`, `parse_hc1`, `parse_dhw`, `parse_operating_mode`) each take raw latin-1 HTML and return typed Pydantic models; `extract_param(html, id)` matches by numeric param ID prefix; `parse_hc_setpoints(html)` extracts six setpoint values from the WEB-RC setpoints page using `<!-- start_mainpane -->` / `<!-- end_mainpane -->` comment markers to bound the search
+- `parsers.py` functions (`parse_hp1`, `parse_hc1`, `parse_dhw`, `parse_operating_mode`) each take raw latin-1 HTML and return typed Pydantic models; `extract_param(html, id)` matches by numeric param ID prefix; `parse_hc_setpoints(html)` extracts six setpoint values from the WEB-RC setpoints page using `<!-- start_mainpane -->` / `<!-- end_mainpane -->` comment markers to bound the search; `parse_flow_limit(html)` extracts `active`/`minFl`/`maxFl` from the HC2 setpoint-limitation page the same way
 - `HeatpumpClient._webrc_lock` — single `asyncio.Lock` serialises ALL WEB-RC navigation/write requests across circuits; navigation re-establishes the full path from root on every call (device context is stateful — concurrent hc1/hc2 navigations on the same session interfere with each other)
 - HPM value strings use a `"LABEL   value"` format for some fields — `parse_bool` and `parse_last_token` use the **last** whitespace-separated token, not the first
 - The app reads `/data/options.json` directly — `run.sh` needs no mapping logic
