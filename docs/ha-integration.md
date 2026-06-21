@@ -67,9 +67,10 @@ homeassistant:
 Add to `secrets.yaml` (one place to update if the IP ever changes):
 
 ```yaml
-heatpump_status_url:  "http://<ha-host-ip>:8765/api/v1/status"
-heatpump_hc1_sp_url:  "http://<ha-host-ip>:8765/api/v1/circuits/hc1/setpoints"
-heatpump_hc2_sp_url:  "http://<ha-host-ip>:8765/api/v1/circuits/hc2/setpoints"
+heatpump_status_url:        "http://<ha-host-ip>:8765/api/v1/status"
+heatpump_hc1_sp_url:        "http://<ha-host-ip>:8765/api/v1/circuits/hc1/setpoints"
+heatpump_hc2_sp_url:        "http://<ha-host-ip>:8765/api/v1/circuits/hc2/setpoints"
+heatpump_hc2_flowlimit_url: "http://<ha-host-ip>:8765/api/v1/circuits/hc2/flow-limit"
 ```
 
 Replace `<ha-host-ip>` with your HA host's LAN IP.
@@ -152,21 +153,17 @@ value returns 422 and writes nothing. The endpoint is **HC2-only** (HC1 → 400)
 > **Note:** turning the limit *off* is not exposed by the API (PATCH only enables, by design);
 > do that from the HPM web UI (`heatC. 2 → function → setpoint limitation → active = 0`).
 
-This is not wired into the shipped `packages/heatpump.yaml` yet. To drive it from HA, add a
-`secrets.yaml` URL and a `rest_command` (optionally fronted by an `input_number`):
+This is wired into `packages/heatpump.yaml` (requires the `heatpump_hc2_flowlimit_url` secret).
+It polls `/api/v1/circuits/hc2/flow-limit` every 60 s and provides:
 
-```yaml
-# secrets.yaml
-heatpump_hc2_flowlimit_url: "http://<ha-host-ip>:8765/api/v1/circuits/hc2/flow-limit"
+- **`number.hc2_pool_flow_setpoint`** — the slider for the pool flow floor. Its state reflects
+  the confirmed `min_flow`; setting it sends `PATCH {"flow_setpoint": <value>}`, which writes
+  `min_flow` and enables the limit in one call.
+- **`sensor.hc2_flow_limit_min`** / **`sensor.hc2_flow_limit_max`** — current `min_flow`/`max_flow`.
+- **`binary_sensor.hc2_flow_limit_active`** — whether the device limitation is currently enabled.
 
-# packages/heatpump.yaml
-rest_command:
-  pool_flow_setpoint:
-    url: !secret heatpump_hc2_flowlimit_url
-    method: PATCH
-    content_type: "application/json"
-    payload: '{"flow_setpoint": {{ value }} }'
-```
+Like the other writable controls, the slider is a template `number` backed by the GET sensor
+(so it shows the device-confirmed value) rather than a standalone `input_number` helper.
 
 ---
 

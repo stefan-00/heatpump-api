@@ -7,11 +7,12 @@
 #     packages:
 #       heatpump: !include packages/heatpump.yaml
 #
-# Add three entries to secrets.yaml pointing at your heatpump-api host
+# Add four entries to secrets.yaml pointing at your heatpump-api host
 # (default port 8765):
-#   heatpump_status_url   -> /api/v1/status
-#   heatpump_hc1_sp_url   -> /api/v1/circuits/hc1/setpoints
-#   heatpump_hc2_sp_url   -> /api/v1/circuits/hc2/setpoints
+#   heatpump_status_url        -> /api/v1/status
+#   heatpump_hc1_sp_url        -> /api/v1/circuits/hc1/setpoints
+#   heatpump_hc2_sp_url        -> /api/v1/circuits/hc2/setpoints
+#   heatpump_hc2_flowlimit_url -> /api/v1/circuits/hc2/flow-limit
 
 # ── Status & setpoint sensors ─────────────────────────────────────────────────
 
@@ -267,6 +268,39 @@ rest:
         device_class: temperature
         state_class: measurement
 
+  # HC2 flow limit (pool heating floor) — /api/v1/circuits/hc2/flow-limit
+  #
+  # min_flow is the flow-temperature floor that lets HC2 demand heat regardless
+  # of the weather curve / outdoor temperature; active reflects whether the
+  # device limitation is enabled. Setting the floor (via the number below) both
+  # writes min_flow and enables the limit in one call.
+  - resource: !secret heatpump_hc2_flowlimit_url
+    scan_interval: 60
+    timeout: 30
+    sensor:
+      - name: "HC2 Flow Limit Min"
+        unique_id: heatpump_hc2_flowlimit_min
+        availability: "{{ value_json is defined and value_json.min_flow is defined and value_json.min_flow is not none }}"
+        value_template: "{{ value_json.min_flow if (value_json is defined and value_json.min_flow is defined) else none }}"
+        unit_of_measurement: "°C"
+        device_class: temperature
+        state_class: measurement
+
+      - name: "HC2 Flow Limit Max"
+        unique_id: heatpump_hc2_flowlimit_max
+        availability: "{{ value_json is defined and value_json.max_flow is defined and value_json.max_flow is not none }}"
+        value_template: "{{ value_json.max_flow if (value_json is defined and value_json.max_flow is defined) else none }}"
+        unit_of_measurement: "°C"
+        device_class: temperature
+        state_class: measurement
+
+    binary_sensor:
+      - name: "HC2 Flow Limit Active"
+        unique_id: heatpump_hc2_flowlimit_active
+        availability: "{{ value_json is defined and value_json.active is defined }}"
+        value_template: "{{ 'ON' if value_json.active else 'OFF' }}"
+        device_class: running
+
 # ── REST commands (setpoint writes) ──────────────────────────────────────────
 
 rest_command:
@@ -355,6 +389,15 @@ rest_command:
     content_type: application/json
     timeout: 30
     payload: '{"roomSNOT": {{ value }}}'
+
+  # HC2 flow limit: writing flow_setpoint sets min_flow AND enables the limit
+  # (the API manages max_flow > min_flow). One call, no separate toggle.
+  heatpump_set_hc2_flow_limit:
+    url: !secret heatpump_hc2_flowlimit_url
+    method: PATCH
+    content_type: application/json
+    timeout: 30
+    payload: '{"flow_setpoint": {{ value }}}'
 
 # ── Template number entities (writable sliders) ───────────────────────────────
 
@@ -515,5 +558,22 @@ template:
         unit_of_measurement: "°C"
         set_value:
           action: rest_command.heatpump_set_hc2_roomsnot
+          data:
+            value: "{{ value }}"
+
+      # Pool flow floor. Setting this writes min_flow and enables the device
+      # flow limitation so HC2 heats the pool regardless of outdoor temp.
+      # State reflects the confirmed min_flow; see binary_sensor.hc2_flow_limit_active
+      # for whether the limit is currently on.
+      - name: "HC2 Pool Flow Setpoint"
+        unique_id: heatpump_hc2_num_flow_limit
+        availability: "{{ has_value('sensor.hc2_flow_limit_min') }}"
+        state: "{{ states('sensor.hc2_flow_limit_min') }}"
+        min: 2
+        max: 50
+        step: 0.5
+        unit_of_measurement: "°C"
+        set_value:
+          action: rest_command.heatpump_set_hc2_flow_limit
           data:
             value: "{{ value }}"
