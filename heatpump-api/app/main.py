@@ -1,5 +1,6 @@
 import logging
 from contextlib import asynccontextmanager
+from copy import deepcopy
 
 import uvicorn
 from fastapi import FastAPI, Request
@@ -44,5 +45,21 @@ async def unhandled_exception_handler(request: Request, exc: Exception) -> JSONR
     return JSONResponse(status_code=500, content={"detail": "Internal server error"})
 
 
+def _log_config() -> dict:
+    # uvicorn.run() installs its own dictConfig for the uvicorn/uvicorn.access/
+    # uvicorn.error loggers, whose formatters have no timestamp. Prepend
+    # %(asctime)s so access lines match app log lines.
+    from uvicorn.config import LOGGING_CONFIG
+
+    config = deepcopy(LOGGING_CONFIG)
+    config["formatters"]["default"]["fmt"] = (
+        "%(asctime)s " + config["formatters"]["default"]["fmt"]
+    )
+    config["formatters"]["access"]["fmt"] = (
+        "%(asctime)s " + config["formatters"]["access"]["fmt"]
+    )
+    return config
+
+
 if __name__ == "__main__":
-    uvicorn.run(app, host="0.0.0.0", port=settings.port)
+    uvicorn.run(app, host="0.0.0.0", port=settings.port, log_config=_log_config())

@@ -1,7 +1,11 @@
+import logging
+
 from fastapi import APIRouter, HTTPException
 
 from ..client import client
 from ..models import FlowLimit, FlowLimitPatch, HcSetpoints, HcSetpointsPatch
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/v1/circuits/{circuit_id}")
 
@@ -23,6 +27,7 @@ async def get_setpoints(circuit_id: str) -> HcSetpoints:
 async def patch_setpoints(circuit_id: str, body: HcSetpointsPatch) -> HcSetpoints:
     _validate_circuit(circuit_id)
     updates = body.model_dump(exclude_none=True)
+    logger.info("PATCH %s/setpoints %s", circuit_id, updates)
     for field, value in updates.items():
         await client.set_hc_setpoint(circuit_id, field, value)
     return await client.get_hc_setpoints(circuit_id)
@@ -46,5 +51,8 @@ async def get_flow_limit(circuit_id: str) -> FlowLimit:
 @router.patch("/flow-limit", response_model=FlowLimit)
 async def patch_flow_limit(circuit_id: str, body: FlowLimitPatch) -> FlowLimit:
     _require_hc2(circuit_id)
+    logger.info(
+        "PATCH %s/flow-limit %s", circuit_id, body.model_dump(exclude_none=True)
+    )
     await client.set_flow_limit(flow_setpoint=body.flow_setpoint, active=body.active)
     return await client.get_flow_limit()
