@@ -44,5 +44,5 @@
 
 - [x] 7.1 Bump `heatpump-api/config.yaml` version from `0.1.10` to `0.1.11` so HA Supervisor offers the update
 - [x] 7.2 Update `CLAUDE.md` to document that `execset` addressing is navigation-relative and that page identity must be verified before every write
-- [ ] 7.3 Commit and push directly to `main`
+- [x] 7.3 Commit and push directly to `main`
 - [ ] 7.4 After deploying, check the add-on log to confirm reads pass verification with no unexpected-title WARNINGs before trusting writes
