@@ -615,13 +615,27 @@ template:
   # this should no longer be reachable. These sensors exist because the failure
   # was silent, and they catch any other route to the same symptom.
   #
-  # Two detectors are combined:
-  #   * ceiling  — an absolute value no legitimate setting reaches
+  # Three detectors are combined:
+  #   * ceiling   — an absolute value no legitimate setting reaches
+  #   * floor     — an absolute value so low it means heating is effectively off
   #   * signature — a setpoint that matches the current pool flow floor, which is
   #                 the fingerprint of a leaked flow-limit write at ANY value
   #
-  # HC1 (floor heating) normally runs 18-20 °C, so a 25 °C ceiling is decisive on
-  # its own; the signature check is deliberately NOT applied to HC1, because a
+  # The low bound exists because the leak is not only an overheating risk. The
+  # write sequence is active=1 @bn1, minFl=<floor> @bn2, maxFl=65 @bn3, and on a
+  # setpoints page those alias onto roomOT1/roomOT2/roomOT3. The minFl one is what
+  # burned us (roomOT2 = the pool floor), and maxFl=65 is caught by the ceiling —
+  # but active=1 would land 1.0 °C on roomOT1, which disables heating rather than
+  # overheating. The device range-rejects 1.0 today (its lower limit is 2.0), so
+  # this has never been observed; it is guarded because a silent failure in the
+  # cold direction is just as bad as one in the hot direction.
+  #
+  # 5 °C is safe as a low bound for both circuits: the only setpoint that
+  # legitimately sits near it is roomSNOT (HC1 14 °C, HC2 2 °C), and roomSNOT is
+  # deliberately excluded from both field lists.
+  #
+  # HC1 (floor heating) normally runs 18-20 °C, so the 25 °C ceiling is decisive
+  # on its own; the signature check is deliberately NOT applied to HC1, because a
   # pool floor set into HC1's normal range would then false-fire constantly.
   # If you ever set the pool floor below 25 °C, revisit that.
   #
@@ -629,8 +643,12 @@ template:
   # 35 °C, so no ceiling can separate a legitimate 35 from a leaked 35. HC2
   # therefore relies on the signature check, with the ceiling only as a backstop
   # above everything either circuit uses. Trade-off: deliberately setting an HC2
-  # room setpoint to exactly the pool floor will alert. Widen `signature_band` or
+  # room setpoint to exactly the pool floor will alert. Widen the 0.2 band or
   # drop the HC2 signature check if that turns out to be something you do.
+  #
+  # `v > -900` guards every comparison: an unavailable field reads as the -999
+  # sentinel, which would otherwise trip the low bound and alert on a missing
+  # reading rather than a bad one. Read-failures are covered separately below.
   - binary_sensor:
       - name: "HC1 Setpoint Leak Detected"
         unique_id: heatpump_hc1_setpoint_leak
@@ -642,7 +660,9 @@ template:
           {% set ns = namespace(hit=false) %}
           {% for f in ['roomot1', 'roomot2', 'roomot3', 'roomot4', 'roomno'] %}
             {% set v = states('sensor.hc1_setpoint_' ~ f) | float(-999) %}
-            {% if v > 25 %}{% set ns.hit = true %}{% endif %}
+            {% if v > -900 and (v > 25 or v < 5) %}
+              {% set ns.hit = true %}
+            {% endif %}
           {% endfor %}
           {{ ns.hit }}
 
@@ -656,7 +676,8 @@ template:
           {% set ns = namespace(hit=false) %}
           {% for f in ['roomot1', 'roomot2', 'roomot3', 'roomot4'] %}
             {% set v = states('sensor.hc2_setpoint_' ~ f) | float(-999) %}
-            {% if v > 36 or (floor > 0 and (v - floor) | abs < 0.2) %}
+            {% if v > -900 and (v > 36 or v < 5
+                                or (floor > 0 and (v - floor) | abs < 0.2)) %}
               {% set ns.hit = true %}
             {% endif %}
           {% endfor %}
@@ -692,7 +713,7 @@ template:
 
 alert:
   heatpump_hc1_setpoint_leak:
-    name: "Heatpump: HC1 room setpoint too high"
+    name: "Heatpump: HC1 room setpoint out of range"
     entity_id: binary_sensor.hc1_setpoint_leak_detected
     state: "on"
     repeat:
@@ -700,17 +721,28 @@ alert:
       - 60
     can_acknowledge: true
     skip_first: false
-    title: "⚠️ HC1 room setpoint too high — house may overheat"
+    title: >-
+      {% set ns = namespace(hot=false, cold=false) %}
+      {%- for f in ['roomot1', 'roomot2', 'roomot3', 'roomot4', 'roomno'] %}
+      {%- set v = states('sensor.hc1_setpoint_' ~ f) | float(-999) %}
+      {%- if v > -900 and v > 25 %}{% set ns.hot = true %}{% endif %}
+      {%- if v > -900 and v < 5 %}{% set ns.cold = true %}{% endif %}
+      {%- endfor %}
+      {%- if ns.hot and ns.cold %}⚠️ HC1 room setpoints out of range
+      {%- elif ns.cold %}⚠️ HC1 room setpoint too low — heating disabled
+      {%- else %}⚠️ HC1 room setpoint too high — house may overheat{% endif %}
     message: >-
       {% set floor = states('sensor.hc2_flow_limit_min') %}
       {% for f, label in [('roomot1', 'OT1'), ('roomot2', 'OT2'),
                           ('roomot3', 'OT3'), ('roomot4', 'OT4'),
                           ('roomno', 'Normal')] %}
       {%- set v = states('sensor.hc1_setpoint_' ~ f) | float(-999) %}
-      {%- if v > 25 %}HC1 room {{ label }} = {{ v }} °C. {% endif %}
+      {%- if v > -900 and (v > 25 or v < 5) %}
+      HC1 room {{ label }} = {{ v }} °C{% if v < 5 %} (too low — this turns
+      heating off){% endif %}. {% endif %}
       {%- endfor %}
       HC1 is floor heating and should sit around 18-20 °C.
-      Pool flow floor is currently {{ floor }} °C — if it matches the value
+      Pool flow floor is currently {{ floor }} °C — if it matches a value
       above, a flow-limit write has leaked onto a room setpoint. Check the
       heatpump-api log for "landed on an unexpected page" or "Session expired
       during". Correct it with the HC1 Room OT2 number entity.
@@ -734,13 +766,17 @@ alert:
       {% for f, label in [('roomot1', 'OT1'), ('roomot2', 'OT2'),
                           ('roomot3', 'OT3'), ('roomot4', 'OT4')] %}
       {%- set v = states('sensor.hc2_setpoint_' ~ f) | float(-999) %}
-      {%- if v > 36 or (floor > 0 and (v - floor) | abs < 0.2) %}
-      HC2 room {{ label }} = {{ v }} °C. {% endif %}
+      {%- if v > -900 and (v > 36 or v < 5
+                           or (floor > 0 and (v - floor) | abs < 0.2)) %}
+      HC2 room {{ label }} = {{ v }} °C{% if v < 5 %} (too low — this turns pool
+      heating off){% elif floor > 0 and (v - floor) | abs < 0.2 %} — matches the
+      pool flow floor ({{ floor }} °C){% endif %}. {% endif %}
       {%- endfor %}
-      This matches the current pool flow floor ({{ floor }} °C), which is the
-      signature of a flow-limit write landing on the setpoints page. If you set
-      this deliberately, acknowledge the alert.
-    done_message: "HC2 room setpoints no longer match the pool flow floor."
+      A setpoint matching the pool flow floor is the signature of a flow-limit
+      write landing on the setpoints page; a value below 5 °C is the `active`
+      parameter landing on a room setpoint. Normal HC2 range is 27-31 °C.
+      If you set this deliberately, acknowledge the alert.
+    done_message: "HC2 room setpoints back to normal."
     notifiers:
       - persistent_notification
       - mobile_app_stefan_mobil
