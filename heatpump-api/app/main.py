@@ -7,7 +7,7 @@ from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 
 from .config import settings
-from .session import StartupError, session_manager
+from .session import SessionExpiredError, StartupError, session_manager
 from .routers import setpoints, status
 
 logging.basicConfig(
@@ -37,6 +37,20 @@ app.include_router(setpoints.router)
 @app.get("/health")
 async def health() -> dict:
     return {"status": "ok"}
+
+
+@app.exception_handler(SessionExpiredError)
+async def session_expired_handler(
+    request: Request, exc: SessionExpiredError
+) -> JSONResponse:
+    # WEB-RC operations normally absorb this by restarting from navigation. If one
+    # escapes, it is a device/session condition, not a bug — surface it as a 502
+    # rather than letting the catch-all below report an internal error.
+    logger.warning("Session expired and was not absorbed by the caller: %s", exc)
+    return JSONResponse(
+        status_code=502,
+        content={"detail": f"Heatpump session expired mid-operation: {exc}"},
+    )
 
 
 @app.exception_handler(Exception)

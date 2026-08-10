@@ -7,8 +7,8 @@ from fastapi import HTTPException
 
 from .config import settings
 from .models import FlowLimit, HcSetpoints, SystemStatus
-from .parsers import extract_param, parse_dhw, parse_float, parse_flow_limit, parse_hc1, parse_hc2, parse_hc_setpoints, parse_hp1, parse_operating_mode
-from .session import SessionManager, session_manager
+from .parsers import PAGE_FLOW_LIMIT, PAGE_SETPOINTS, extract_param, page_matches, parse_dhw, parse_float, parse_flow_limit, parse_hc1, parse_hc2, parse_hc_setpoints, parse_hp1, parse_operating_mode, parse_page_title
+from .session import SessionExpiredError, SessionManager, session_manager
 
 logger = logging.getLogger(__name__)
 
@@ -92,9 +92,75 @@ class HeatpumpClient:
         return status
 
 
-    async def _webrc_navigate(self, base: str, labels: list[str]) -> httpx.Response:
+    async def _webrc_operation(self, description: str, op):
+        """Run a navigate-and-act operation under the WEB-RC lock.
+
+        Retries the operation exactly once if the session expired part-way
+        through, so a routine expiry stays invisible to the caller while every
+        write is still preceded by a freshly verified navigation. A verification
+        failure is never retried — it would repeat the same deterministic
+        mismatch — and neither is a validation error.
+        """
+        async with self._webrc_lock:
+            for attempt in (1, 2):
+                try:
+                    return await op()
+                except SessionExpiredError as e:
+                    if attempt == 2:
+                        logger.warning(
+                            "Session expired twice during %s; giving up", description
+                        )
+                        raise HTTPException(
+                            status_code=502,
+                            detail=f"Session expired during {description}; retry failed",
+                        ) from e
+                    logger.info(
+                        "Session expired during %s (%s); restarting from navigation",
+                        description, e,
+                    )
+                except httpx.RequestError as e:
+                    logger.warning("Heatpump unreachable during %s: %r", description, e)
+                    raise HTTPException(
+                        status_code=502, detail=f"Heatpump unreachable: {e!r}"
+                    ) from e
+
+    def _check_generation(self, gen: int, what: str) -> None:
+        """Abort if the session was re-authenticated since navigation completed.
+
+        A re-login repositions the device at the WEB-RC root, which makes the
+        navigation-relative (branchnr, level) address of a pending write point at
+        a different parameter. Raising SessionExpiredError here makes
+        `_webrc_operation` re-navigate and try again rather than write blind.
+        """
+        if self._session.generation != gen:
+            raise SessionExpiredError(
+                f"Session re-authenticated after navigation; refusing to write {what} "
+                f"against a stale navigation context"
+            )
+
+    @staticmethod
+    def _parse_limits(html: str) -> tuple[float | None, float | None]:
+        """Extract the device's (lower, upper) limit pair from an info.rsp page."""
+        lo_match = re.search(r"Lower limit:.*?(-?\d+\.\d+)\s*°", html, re.DOTALL | re.I)
+        hi_match = re.search(r"Upper limit:.*?(-?\d+\.\d+)\s*°", html, re.DOTALL | re.I)
+        lo = float(lo_match.group(1)) if lo_match else None
+        hi = float(hi_match.group(1)) if hi_match else None
+        return lo, hi
+
+    async def _webrc_navigate(
+        self, base: str, labels: list[str], circuit: str, page: str
+    ) -> httpx.Response:
+        """Walk from the WEB-RC root to a target page and verify where we landed.
+
+        Label matching alone cannot detect drift into the wrong circuit: HC1 and
+        HC2 expose identical child labels ('setpoints', 'function', 'setpoint
+        limitation'), so a mid-walk re-login can land the remainder of the walk
+        in the wrong subtree and still match every label. The landed page's own
+        title row is checked before the caller is allowed to use it.
+        """
         resp = await self._session.request(
-            "GET", f"{base}/menue.rsp", params={"branchnr": "1", "level": "0"}
+            "GET", f"{base}/menue.rsp", params={"branchnr": "1", "level": "0"},
+            retry_on_expiry=False,
         )
         for label in labels:
             html = resp.content.decode("latin-1")
@@ -116,93 +182,109 @@ class HeatpumpClient:
                     detail=f"WEB-RC menu item {label!r} not found; available: {available}",
                 )
             resp = await self._session.request(
-                "GET", f"{base}/menue.rsp", params=matched_params
+                "GET", f"{base}/menue.rsp", params=matched_params,
+                retry_on_expiry=False,
+            )
+
+        title = parse_page_title(resp.content.decode("latin-1"))
+        if not page_matches(title, circuit, page):
+            logger.warning(
+                "WEB-RC navigation landed on an unexpected page: wanted circuit=%s "
+                "page=%s, observed title %r (labels=%s). Refusing to use this page.",
+                circuit, page, title, labels,
+            )
+            raise HTTPException(
+                status_code=502,
+                detail=(
+                    f"WEB-RC navigation verification failed: expected {circuit} "
+                    f"{page!r} page, landed on {title!r}"
+                ),
             )
         return resp
 
     async def get_hc_setpoints(self, circuit_id: str) -> HcSetpoints:
         base = settings.heatpump_url.rstrip("/")
         labels = _CIRCUIT_LABELS[circuit_id]
-        async with self._webrc_lock:
-            try:
-                resp = await self._webrc_navigate(base, labels)
-            except httpx.RequestError as e:
-                logger.warning("Heatpump unreachable during setpoint read: %r", e)
-                raise HTTPException(status_code=502, detail=f"Heatpump unreachable: {e!r}") from e
 
-        html = resp.content.decode("latin-1")
-        values = parse_hc_setpoints(html)
-        if not values:
-            raise HTTPException(status_code=502, detail="Could not parse setpoints from heatpump response")
-        return HcSetpoints(**values)
+        async def op() -> HcSetpoints:
+            resp = await self._webrc_navigate(base, labels, circuit_id, PAGE_SETPOINTS)
+            values = parse_hc_setpoints(resp.content.decode("latin-1"))
+            if not values:
+                raise HTTPException(
+                    status_code=502,
+                    detail="Could not parse setpoints from heatpump response",
+                )
+            return HcSetpoints(**values)
+
+        return await self._webrc_operation(f"{circuit_id} setpoint read", op)
 
     async def set_hc_setpoint(self, circuit_id: str, field: str, value: float) -> None:
         base = settings.heatpump_url.rstrip("/")
         labels = _CIRCUIT_LABELS[circuit_id]
         position = _SETPOINT_POSITION[field]
-        async with self._webrc_lock:
-            try:
-                await self._webrc_navigate(base, labels)
-                # Validate against device limits before writing
-                info_resp = await self._session.request(
-                    "GET", f"{base}/info.rsp",
-                    params={"branchnr": str(position), "level": "4"},
+
+        async def op() -> None:
+            await self._webrc_navigate(base, labels, circuit_id, PAGE_SETPOINTS)
+            gen = self._session.generation
+
+            # Validate against device limits before writing. This is only
+            # meaningful because navigation above verified the page — info.rsp is
+            # addressed the same navigation-relative way as the write itself.
+            info_resp = await self._session.request(
+                "GET", f"{base}/info.rsp",
+                params={"branchnr": str(position), "level": "4"},
+                retry_on_expiry=False,
+            )
+            lo, hi = self._parse_limits(info_resp.content.decode("latin-1"))
+            if lo is not None and hi is not None and not lo <= value <= hi:
+                raise HTTPException(
+                    status_code=422,
+                    detail=f"Value {value} out of device range [{lo}, {hi}] for {field!r}",
                 )
-                info_html = info_resp.content.decode("latin-1")
-                lo_match = re.search(
-                    r'Lower limit:.*?(-?\d+\.\d+)\s*°', info_html, re.DOTALL | re.I
-                )
-                hi_match = re.search(
-                    r'Upper limit:.*?(-?\d+\.\d+)\s*°', info_html, re.DOTALL | re.I
-                )
-                if lo_match and hi_match:
-                    lo, hi = float(lo_match.group(1)), float(hi_match.group(1))
-                    if not lo <= value <= hi:
-                        raise HTTPException(
-                            status_code=422,
-                            detail=f"Value {value} out of device range [{lo}, {hi}] for {field!r}",
-                        )
-                await self._session.request(
-                    "POST",
-                    f"{base}/execset.rsp",
-                    data={
-                        "val": f"{value:.1f}",
-                        "Set": "OK",
-                        "sessionid": self._session._session_id,
-                        "branchnr": str(position),
-                        "level": "4",
-                        "id": str(position),
-                    },
-                )
-            except HTTPException:
-                raise
-            except httpx.RequestError as e:
-                logger.warning("Heatpump unreachable during setpoint write: %r", e)
-                raise HTTPException(status_code=502, detail=f"Heatpump unreachable: {e!r}") from e
+
+            self._check_generation(gen, f"{circuit_id} {field}")
+            await self._session.request(
+                "POST",
+                f"{base}/execset.rsp",
+                data={
+                    "val": f"{value:.1f}",
+                    "Set": "OK",
+                    "sessionid": self._session._session_id,
+                    "branchnr": str(position),
+                    "level": "4",
+                    "id": str(position),
+                },
+                retry_on_expiry=False,
+            )
+
+        await self._webrc_operation(f"{circuit_id} {field} write", op)
 
 
     async def get_flow_limit(self) -> FlowLimit:
         base = settings.heatpump_url.rstrip("/")
-        async with self._webrc_lock:
-            try:
-                resp = await self._webrc_navigate(base, _HC2_FLOWLIMIT_LABELS)
-            except httpx.RequestError as e:
-                logger.warning("Heatpump unreachable during flow-limit read: %r", e)
-                raise HTTPException(status_code=502, detail=f"Heatpump unreachable: {e!r}") from e
 
-        values = parse_flow_limit(resp.content.decode("latin-1"))
-        if not all(k in values for k in ("active", "minFl", "maxFl")):
-            raise HTTPException(status_code=502, detail="Could not parse flow limit from heatpump response")
-        return FlowLimit(
-            active=bool(values["active"]),
-            min_flow=values["minFl"],
-            max_flow=values["maxFl"],
-        )
+        async def op() -> FlowLimit:
+            resp = await self._webrc_navigate(
+                base, _HC2_FLOWLIMIT_LABELS, "hc2", PAGE_FLOW_LIMIT
+            )
+            values = parse_flow_limit(resp.content.decode("latin-1"))
+            if not all(k in values for k in ("active", "minFl", "maxFl")):
+                raise HTTPException(
+                    status_code=502,
+                    detail="Could not parse flow limit from heatpump response",
+                )
+            return FlowLimit(
+                active=bool(values["active"]),
+                min_flow=values["minFl"],
+                max_flow=values["maxFl"],
+            )
+
+        return await self._webrc_operation("HC2 flow-limit read", op)
 
     async def set_flow_limit(
         self, flow_setpoint: float | None = None, active: bool | None = None
-    ) -> None:
-        """Write the HC2 flow limitation.
+    ) -> dict[str, float]:
+        """Write the HC2 flow limitation and return the values actually written.
 
         When flow_setpoint is given, writes minFl = flow_setpoint and ensures
         maxFl > minFl (the device rejects maxFl <= minFl; maxFl is kept if
@@ -210,61 +292,115 @@ class HeatpumpClient:
         limitation is enabled/disabled per `active`; when `active` is None it
         defaults to enabled iff a floor was written, so a lone flow_setpoint
         both sets the floor and enables. At least one argument must be set.
+
+        The returned dict maps each written parameter to its requested value so
+        the caller can confirm it took effect — the device returns 302 for both
+        accepted and rejected writes.
         """
         if flow_setpoint is None and active is None:
             raise HTTPException(status_code=422, detail="Nothing to set: provide flow_setpoint and/or active")
 
         base = settings.heatpump_url.rstrip("/")
-        async with self._webrc_lock:
-            try:
-                resp = await self._webrc_navigate(base, _HC2_FLOWLIMIT_LABELS)
-                current = parse_flow_limit(resp.content.decode("latin-1"))
 
-                if flow_setpoint is not None:
-                    # Range-check the floor against the device's accepted minFl range.
-                    info_resp = await self._session.request(
-                        "GET", f"{base}/info.rsp",
-                        params={"branchnr": str(_FLOWLIMIT_POSITION["minFl"]), "level": _FLOWLIMIT_LEVEL},
+        async def op() -> dict[str, float]:
+            resp = await self._webrc_navigate(
+                base, _HC2_FLOWLIMIT_LABELS, "hc2", PAGE_FLOW_LIMIT
+            )
+            gen = self._session.generation
+            current = parse_flow_limit(resp.content.decode("latin-1"))
+            # Never write using assumed current values: an unparseable page means
+            # we cannot reason about the maxFl > minFl constraint at all.
+            if not all(k in current for k in ("active", "minFl", "maxFl")):
+                raise HTTPException(
+                    status_code=502,
+                    detail=(
+                        "Could not parse the current HC2 flow limitation "
+                        f"(got {sorted(current)}); refusing to write"
+                    ),
+                )
+
+            written: dict[str, float] = {}
+
+            if flow_setpoint is not None:
+                lo, hi = await self._flowlimit_range(base, "minFl")
+                lo = 2.0 if lo is None else lo
+                hi = 160.0 if hi is None else hi
+                if not lo <= flow_setpoint <= hi:
+                    raise HTTPException(
+                        status_code=422,
+                        detail=f"flow_setpoint {flow_setpoint} out of device range [{lo}, {hi}]",
                     )
-                    info_html = info_resp.content.decode("latin-1")
-                    lo_match = re.search(r"Lower limit:.*?(-?\d+\.\d+)\s*°", info_html, re.DOTALL | re.I)
-                    hi_match = re.search(r"Upper limit:.*?(-?\d+\.\d+)\s*°", info_html, re.DOTALL | re.I)
-                    lo = float(lo_match.group(1)) if lo_match else 2.0
-                    hi = float(hi_match.group(1)) if hi_match else 160.0
-                    if not lo <= flow_setpoint <= hi:
-                        raise HTTPException(
-                            status_code=422,
-                            detail=f"flow_setpoint {flow_setpoint} out of device range [{lo}, {hi}]",
-                        )
 
-                    # Pick a max_flow strictly greater than the floor (device constraint).
-                    cur_max = current.get("maxFl", 0.0)
-                    target_max = cur_max if cur_max > flow_setpoint else _FLOWLIMIT_MAX_CAP
-                    if target_max <= flow_setpoint:
-                        target_max = min(hi, flow_setpoint + 5.0)
-                    if not flow_setpoint < target_max <= hi:
-                        raise HTTPException(
-                            status_code=422,
-                            detail=(
-                                f"Cannot satisfy max_flow > min_flow within device range "
-                                f"[{lo}, {hi}] for flow_setpoint {flow_setpoint}"
-                            ),
-                        )
+                # Pick a max_flow strictly greater than the floor (device constraint).
+                cur_max = current["maxFl"]
+                target_max = cur_max if cur_max > flow_setpoint else _FLOWLIMIT_MAX_CAP
+                if target_max <= flow_setpoint:
+                    target_max = min(hi, flow_setpoint + 5.0)
+                if not flow_setpoint < target_max <= hi:
+                    raise HTTPException(
+                        status_code=422,
+                        detail=(
+                            f"Cannot satisfy max_flow > min_flow within device range "
+                            f"[{lo}, {hi}] for flow_setpoint {flow_setpoint}"
+                        ),
+                    )
 
-                    # Order matters: raise maxFl first (so minFl never transiently
-                    # exceeds maxFl), then set the floor.
-                    await self._execset_flowlimit(base, "maxFl", f"{target_max:.1f}")
-                    await self._execset_flowlimit(base, "minFl", f"{flow_setpoint:.1f}")
+                # maxFl gets its own range check — it is a separate device param
+                # with its own limits, and is written just like the floor.
+                max_lo, max_hi = await self._flowlimit_range(base, "maxFl")
+                if (
+                    max_lo is not None and max_hi is not None
+                    and not max_lo <= target_max <= max_hi
+                ):
+                    raise HTTPException(
+                        status_code=422,
+                        detail=(
+                            f"Derived max_flow {target_max} out of device range "
+                            f"[{max_lo}, {max_hi}]"
+                        ),
+                    )
 
-                # Explicit `active` wins; otherwise enable (a lone floor write
-                # both sets and enables). At least one arg is always set here.
-                effective_active = active if active is not None else (flow_setpoint is not None)
-                await self._execset_flowlimit(base, "active", "1" if effective_active else "0")
-            except HTTPException:
-                raise
-            except httpx.RequestError as e:
-                logger.warning("Heatpump unreachable during flow-limit write: %r", e)
-                raise HTTPException(status_code=502, detail=f"Heatpump unreachable: {e!r}") from e
+                # Order matters: raise maxFl first (so minFl never transiently
+                # exceeds maxFl), then set the floor. The generation is re-checked
+                # before each write — a re-login between them would silently
+                # retarget the remaining writes.
+                self._check_generation(gen, "HC2 maxFl")
+                await self._execset_flowlimit(base, "maxFl", f"{target_max:.1f}")
+                written["maxFl"] = target_max
+
+                self._check_generation(gen, "HC2 minFl")
+                await self._execset_flowlimit(base, "minFl", f"{flow_setpoint:.1f}")
+                written["minFl"] = flow_setpoint
+
+            # Explicit `active` wins; otherwise enable (a lone floor write
+            # both sets and enables). At least one arg is always set here.
+            effective_active = active if active is not None else (flow_setpoint is not None)
+            # `active` is a 0/1 flag, not a temperature, so info.rsp publishes no
+            # °C range for it; validate by construction instead.
+            active_val = "1" if effective_active else "0"
+            if active_val not in ("0", "1"):  # pragma: no cover - defensive
+                raise HTTPException(status_code=422, detail=f"Invalid active value {active_val!r}")
+            self._check_generation(gen, "HC2 active")
+            await self._execset_flowlimit(base, "active", active_val)
+            written["active"] = float(active_val)
+
+            return written
+
+        return await self._webrc_operation("HC2 flow-limit write", op)
+
+    async def _flowlimit_range(
+        self, base: str, field: str
+    ) -> tuple[float | None, float | None]:
+        """Read the device's accepted range for one limitation parameter."""
+        info_resp = await self._session.request(
+            "GET", f"{base}/info.rsp",
+            params={
+                "branchnr": str(_FLOWLIMIT_POSITION[field]),
+                "level": _FLOWLIMIT_LEVEL,
+            },
+            retry_on_expiry=False,
+        )
+        return self._parse_limits(info_resp.content.decode("latin-1"))
 
     async def _execset_flowlimit(self, base: str, field: str, val: str) -> None:
         position = _FLOWLIMIT_POSITION[field]
@@ -279,6 +415,7 @@ class HeatpumpClient:
                 "level": _FLOWLIMIT_LEVEL,
                 "id": str(position),
             },
+            retry_on_expiry=False,
         )
 
 

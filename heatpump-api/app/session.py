@@ -30,6 +30,18 @@ class StartupError(Exception):
     pass
 
 
+class SessionExpiredError(Exception):
+    """Raised when a navigation-dependent request hit an expired session.
+
+    The session has been re-authenticated by the time this is raised, but the
+    original request was deliberately NOT resent: `login()` positions the device
+    at the WEB-RC root and restores no navigation, so resending a request that
+    addresses a parameter by a navigation-relative (branchnr, level) pair would
+    write to a different parameter. The caller must re-run its whole
+    navigate-and-act operation against the fresh session instead.
+    """
+
+
 class SessionManager:
     def __init__(self) -> None:
         # Explicit timeout: the HPM default httpx 5s read timeout is too short for
@@ -112,7 +124,27 @@ class SessionManager:
         self._generation += 1
         logger.info("Authenticated with heatpump web UI (session generation %d)", self._generation)
 
-    async def request(self, method: str, url: str, **kwargs) -> httpx.Response:
+    @property
+    def generation(self) -> int:
+        """Monotonically increasing counter, incremented on every successful login.
+
+        WEB-RC callers capture this after navigating and re-check it before each
+        write: a change means the device was repositioned to root and the
+        caller's navigation context is stale.
+        """
+        return self._generation
+
+    async def request(
+        self, method: str, url: str, retry_on_expiry: bool = True, **kwargs
+    ) -> httpx.Response:
+        """Send an authenticated request to the heatpump web UI.
+
+        `retry_on_expiry=False` must be used for every request whose correctness
+        depends on the device's current WEB-RC navigation position — all
+        `menue.rsp` steps, `info.rsp` range reads and `execset.rsp` writes. Those
+        re-authenticate on expiry but raise SessionExpiredError instead of being
+        resent against a reset navigation context.
+        """
         self._raise_if_breaker_open()
         gen_at_call = self._generation
         try:
@@ -127,6 +159,15 @@ class SessionManager:
             async with self._lock:
                 if self._generation == gen_at_call:
                     await self.login()
+
+            if not retry_on_expiry:
+                # The device answered (with a login redirect), so it isn't wedged.
+                self._record_success()
+                raise SessionExpiredError(
+                    f"Session expired during navigation-dependent {method} {url}; "
+                    "re-authenticated but did not resend — caller must restart "
+                    "the whole operation"
+                )
 
             response = await self._make_request(method, url, **kwargs)
         except httpx.RequestError:

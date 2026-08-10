@@ -126,6 +126,51 @@ def _mainpane(html: str) -> str:
     return m.group(1) if m else html
 
 
+# Page-identity markers. `execset.rsp` addresses a parameter by a
+# (branchnr, level) pair that the device resolves relative to the page the
+# session last navigated to — the write itself carries nothing identifying the
+# circuit. HC1 and HC2 setpoints pages are BOTH (bn=2, lv=4), and both
+# setpoint-limitation pages are BOTH (bn=2, lv=5), so the only evidence of
+# which page a navigation actually reached is the page's own title row.
+CIRCUIT_MARKERS = {"hc1": "heatcirc1", "hc2": "heatcirc2"}
+PAGE_SETPOINTS = "setpoints"
+PAGE_FLOW_LIMIT = "f-sp.limit"
+
+
+def parse_page_title(html: str) -> str | None:
+    """Return the page's self-identifying title row, whitespace-normalised.
+
+    Every WEB-RC page renders its identity as the first row of the mainpane —
+    e.g. 'heatCirc1 setpoints', 'heatCirc2 F-SP.limit', 'heatCirc1 funct.'.
+    Returns None when no non-empty row can be found.
+    """
+    pane = _mainpane(html)
+    for tr in re.findall(r"<tr[^>]*>(.*?)</tr>", pane, re.DOTALL | re.IGNORECASE):
+        text = re.sub(r"<[^>]+>", " ", tr)
+        text = re.sub(r"\s+", " ", text).strip()
+        if text:
+            return text
+    return None
+
+
+def page_matches(title: str | None, circuit: str, page: str) -> bool:
+    """True if `title` identifies the given circuit's given page.
+
+    Matching is case-insensitive and requires BOTH a circuit marker and a page
+    marker to be present, rather than exact equality with a full string, so
+    cosmetic firmware wording differences do not reject a valid page. The two
+    page markers are mutually exclusive across the pages we address: a
+    limitation page title ('F-SP.limit') never contains 'setpoints'.
+    """
+    if not title:
+        return False
+    marker = CIRCUIT_MARKERS.get(circuit)
+    if marker is None:
+        return False
+    lowered = title.lower()
+    return marker in lowered and page in lowered
+
+
 def parse_hc_setpoints(html: str) -> dict[str, float]:
     pane = _mainpane(html)
     result: dict[str, float] = {}
