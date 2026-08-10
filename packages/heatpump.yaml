@@ -604,175 +604,165 @@ template:
         turn_off:
           action: rest_command.heatpump_disable_hc2_flow_limit
 
-# ── Watchdogs ─────────────────────────────────────────────────────────────────
-#
-# Background: WEB-RC `execset.rsp` writes are addressed relative to the page the
-# heatpump session last navigated to, and HC1/HC2 pages share identical
-# (branchnr, level) coordinates. A mis-navigation therefore wrote the HC2 pool
-# flow floor onto a *room* setpoint: HC1 roomOT2 = 34.0 on 2026-08-06 (three days
-# of overheated floor heating before it was noticed) and HC2 roomOT2 = 35.0 on
-# 2026-08-02. heatpump-api 0.1.11 verifies page identity before every write, so
-# this should no longer be reachable — these watchdogs exist because the failure
-# was silent, and would catch any other route to the same symptom.
-#
-# Thresholds are set above the normal operating range of each circuit's room
-# setpoints and below the pool flow floor, so they fire on a leak but not on
-# legitimate adjustment. Observed normal values: HC1 roomOT1-4 ~18-20 °C;
-# HC2 roomOT1 27, roomOT2 28, roomOT3 30, roomOT4 27; pool flow floor 34.
-# Raise or lower these if you change either circuit's normal range.
-
-automation:
-  - id: heatpump_hc1_room_setpoint_watchdog
-    alias: "Heatpump: HC1 room setpoint implausibly high"
-    description: >-
-      HC1 is floor heating and its room setpoints should never approach pool
-      flow temperatures. A jump into this range means a value was written to the
-      wrong circuit or the wrong parameter.
-    mode: single
-    triggers:
-      - trigger: numeric_state
-        entity_id:
-          - sensor.hc1_setpoint_roomot1
-          - sensor.hc1_setpoint_roomot2
-          - sensor.hc1_setpoint_roomot3
-          - sensor.hc1_setpoint_roomot4
-          - sensor.hc1_setpoint_roomno
-        above: 25
+  # ── Watchdog problem sensors ────────────────────────────────────────────────
+  #
+  # Background: WEB-RC `execset.rsp` writes are addressed relative to the page
+  # the heatpump session last navigated to, and HC1/HC2 pages share identical
+  # (branchnr, level) coordinates. A mis-navigation wrote the HC2 pool flow floor
+  # onto a *room* setpoint: HC1 roomOT2 = 34.0 on 2026-08-06 (three days of
+  # overheated floor heating before anyone noticed) and HC2 roomOT2 = 35.0 on
+  # 2026-08-02. heatpump-api 0.1.11 verifies page identity before every write, so
+  # this should no longer be reachable. These sensors exist because the failure
+  # was silent, and they catch any other route to the same symptom.
+  #
+  # Two detectors are combined:
+  #   * ceiling  — an absolute value no legitimate setting reaches
+  #   * signature — a setpoint that matches the current pool flow floor, which is
+  #                 the fingerprint of a leaked flow-limit write at ANY value
+  #
+  # HC1 (floor heating) normally runs 18-20 °C, so a 25 °C ceiling is decisive on
+  # its own; the signature check is deliberately NOT applied to HC1, because a
+  # pool floor set into HC1's normal range would then false-fire constantly.
+  # If you ever set the pool floor below 25 °C, revisit that.
+  #
+  # HC2 (pool) room setpoints run 27-31 °C and the pool flow floor goes up to
+  # 35 °C, so no ceiling can separate a legitimate 35 from a leaked 35. HC2
+  # therefore relies on the signature check, with the ceiling only as a backstop
+  # above everything either circuit uses. Trade-off: deliberately setting an HC2
+  # room setpoint to exactly the pool floor will alert. Widen `signature_band` or
+  # drop the HC2 signature check if that turns out to be something you do.
+  - binary_sensor:
+      - name: "HC1 Setpoint Leak Detected"
+        unique_id: heatpump_hc1_setpoint_leak
+        device_class: problem
         # Ride out a single bad poll; a real write persists.
-        for: "00:02:00"
-    actions:
-      - action: persistent_notification.create
-        data:
-          title: "⚠️ Heatpump: HC1 room setpoint too high"
-          notification_id: heatpump_hc1_room_setpoint_watchdog
-          message: >-
-            {{ trigger.to_state.name }} is {{ trigger.to_state.state }} °C
-            (was {{ trigger.from_state.state }} °C). HC1 is floor heating — this
-            is high enough to overheat the house.
+        delay_on: "00:02:00"
+        availability: "{{ has_value('sensor.hc1_setpoint_roomot2') }}"
+        state: >-
+          {% set ns = namespace(hit=false) %}
+          {% for f in ['roomot1', 'roomot2', 'roomot3', 'roomot4', 'roomno'] %}
+            {% set v = states('sensor.hc1_setpoint_' ~ f) | float(-999) %}
+            {% if v > 25 %}{% set ns.hit = true %}{% endif %}
+          {% endfor %}
+          {{ ns.hit }}
 
-            HC2 pool flow floor is currently
-            {{ states('sensor.hc2_flow_limit_min') }} °C
-            (limit {{ states('binary_sensor.hc2_flow_limit_active') }}).
-            If those two values match, a flow-limit write has leaked onto a room
-            setpoint — check the heatpump-api log for
-            "landed on an unexpected page" or "Session expired during".
+      - name: "HC2 Setpoint Leak Detected"
+        unique_id: heatpump_hc2_setpoint_leak
+        device_class: problem
+        delay_on: "00:02:00"
+        availability: "{{ has_value('sensor.hc2_setpoint_roomot2') }}"
+        state: >-
+          {% set floor = states('sensor.hc2_flow_limit_min') | float(-1) %}
+          {% set ns = namespace(hit=false) %}
+          {% for f in ['roomot1', 'roomot2', 'roomot3', 'roomot4'] %}
+            {% set v = states('sensor.hc2_setpoint_' ~ f) | float(-999) %}
+            {% if v > 36 or (floor > 0 and (v - floor) | abs < 0.2) %}
+              {% set ns.hit = true %}
+            {% endif %}
+          {% endfor %}
+          {{ ns.hit }}
 
-            Correct it with the HC1 Room OT2 number entity.
-      - action: logbook.log
-        data:
-          name: "Heatpump watchdog"
-          message: >-
-            {{ trigger.to_state.name }} rose to {{ trigger.to_state.state }} °C
-            (pool floor {{ states('sensor.hc2_flow_limit_min') }} °C)
-          entity_id: "{{ trigger.entity_id }}"
+      # The 0.1.11 page-identity check fails closed: if the device's page titles
+      # ever differ from what the API expects, it refuses every read AND write
+      # rather than risk targeting the wrong circuit. That is the safe direction,
+      # but it means losing setpoint control silently, so alert on it. Reads run
+      # every 60 s, so 15 minutes of failure is a real signal, not a blip.
+      - name: "Heatpump Setpoint Reads Failing"
+        unique_id: heatpump_setpoint_reads_failing
+        device_class: problem
+        delay_on: "00:15:00"
+        state: >-
+          {{ not has_value('sensor.hc1_setpoint_roomot2')
+             or not has_value('sensor.hc2_flow_limit_min') }}
 
-  - id: heatpump_hc2_room_setpoint_watchdog
-    alias: "Heatpump: HC2 room setpoint implausibly high"
-    description: >-
-      Catches the 2026-08-02 variant, where the pool flow floor landed on HC2's
-      own roomOT2 rather than HC1's.
-    mode: single
-    triggers:
-      - trigger: numeric_state
-        entity_id:
-          - sensor.hc2_setpoint_roomot1
-          - sensor.hc2_setpoint_roomot2
-          - sensor.hc2_setpoint_roomot3
-          - sensor.hc2_setpoint_roomot4
-        above: 32
-        for: "00:02:00"
-    actions:
-      - action: persistent_notification.create
-        data:
-          title: "⚠️ Heatpump: HC2 room setpoint too high"
-          notification_id: heatpump_hc2_room_setpoint_watchdog
-          message: >-
-            {{ trigger.to_state.name }} is {{ trigger.to_state.state }} °C
-            (was {{ trigger.from_state.state }} °C), above the normal HC2 range.
+# ── Alerts ────────────────────────────────────────────────────────────────────
+#
+# The `alert` integration re-notifies until the condition clears or you
+# acknowledge it, and sends a done_message when it resolves. That repetition is
+# the point: the 2026-08-06 incident ran for three days because a single missed
+# notification meant silence.
+#
+# NOTIFICATION DELIVERY — read this:
+# `persistent_notification` only shows a badge in the HA sidebar. It will NOT
+# reach your phone. To actually be alerted while away, install the Home
+# Assistant Companion app and add your device's notifier below. Find its exact
+# name in Developer Tools -> Actions, searching for "notify" — the service is
+# `notify.mobile_app_<device>` and the notifier name here omits the `notify.`
+# prefix. Uncomment the mobile_app lines once you know it.
 
-            HC2 pool flow floor is currently
-            {{ states('sensor.hc2_flow_limit_min') }} °C. Matching values point
-            at a flow-limit write landing on the setpoints page.
+alert:
+  heatpump_hc1_setpoint_leak:
+    name: "Heatpump: HC1 room setpoint too high"
+    entity_id: binary_sensor.hc1_setpoint_leak_detected
+    state: "on"
+    repeat:
+      - 15
+      - 60
+    can_acknowledge: true
+    skip_first: false
+    title: "⚠️ HC1 room setpoint too high — house may overheat"
+    message: >-
+      {% set floor = states('sensor.hc2_flow_limit_min') %}
+      {% for f, label in [('roomot1', 'OT1'), ('roomot2', 'OT2'),
+                          ('roomot3', 'OT3'), ('roomot4', 'OT4'),
+                          ('roomno', 'Normal')] %}
+      {%- set v = states('sensor.hc1_setpoint_' ~ f) | float(-999) %}
+      {%- if v > 25 %}HC1 room {{ label }} = {{ v }} °C. {% endif %}
+      {%- endfor %}
+      HC1 is floor heating and should sit around 18-20 °C.
+      Pool flow floor is currently {{ floor }} °C — if it matches the value
+      above, a flow-limit write has leaked onto a room setpoint. Check the
+      heatpump-api log for "landed on an unexpected page" or "Session expired
+      during". Correct it with the HC1 Room OT2 number entity.
+    done_message: "HC1 room setpoints back to normal."
+    notifiers:
+      - persistent_notification
+      # - mobile_app_your_device
 
-  # The 0.1.11 page-identity check fails closed: if the device's page titles ever
-  # differ from what the API expects, it refuses every read and write rather than
-  # risk writing to the wrong circuit. That is the safe direction, but it means
-  # losing setpoint control silently — so alert on it. Reads run every 60 s, so
-  # a sustained outage here is a real signal, not a blip.
-  - id: heatpump_setpoints_unavailable_watchdog
-    alias: "Heatpump: setpoint reads failing"
-    description: >-
-      Setpoint sensors unavailable for 15 minutes. Most likely the heatpump is
-      unreachable — but it also fires if page-identity verification is rejecting
-      valid pages, which would block all writes.
-    mode: single
-    triggers:
-      - trigger: state
-        entity_id:
-          - sensor.hc1_setpoint_roomot2
-          - sensor.hc2_flow_limit_min
-        to:
-          - "unavailable"
-          - "unknown"
-        for: "00:15:00"
-    actions:
-      - action: persistent_notification.create
-        data:
-          title: "Heatpump: setpoint reads failing"
-          notification_id: heatpump_setpoints_unavailable_watchdog
-          message: >-
-            {{ trigger.to_state.name }} has been
-            {{ trigger.to_state.state }} for 15 minutes, so setpoint writes are
-            not working either.
+  heatpump_hc2_setpoint_leak:
+    name: "Heatpump: HC2 room setpoint matches pool flow floor"
+    entity_id: binary_sensor.hc2_setpoint_leak_detected
+    state: "on"
+    repeat:
+      - 30
+      - 120
+    can_acknowledge: true
+    skip_first: false
+    title: "⚠️ HC2 room setpoint looks like a leaked flow-limit write"
+    message: >-
+      {% set floor = states('sensor.hc2_flow_limit_min') | float(-1) %}
+      {% for f, label in [('roomot1', 'OT1'), ('roomot2', 'OT2'),
+                          ('roomot3', 'OT3'), ('roomot4', 'OT4')] %}
+      {%- set v = states('sensor.hc2_setpoint_' ~ f) | float(-999) %}
+      {%- if v > 36 or (floor > 0 and (v - floor) | abs < 0.2) %}
+      HC2 room {{ label }} = {{ v }} °C. {% endif %}
+      {%- endfor %}
+      This matches the current pool flow floor ({{ floor }} °C), which is the
+      signature of a flow-limit write landing on the setpoints page. If you set
+      this deliberately, acknowledge the alert.
+    done_message: "HC2 room setpoints no longer match the pool flow floor."
+    notifiers:
+      - persistent_notification
+      # - mobile_app_your_device
 
-            Check the heatpump-api add-on log. "landed on an unexpected page"
-            means page-identity verification is rejecting valid pages and the
-            expected title markers need adjusting; "Heatpump unreachable" or
-            "backing off after repeated failures" means a device/network problem.
-
-  # Clear the notifications once values return to a plausible range, so a stale
-  # warning does not linger after you have corrected the setpoint.
-  - id: heatpump_watchdog_clear
-    alias: "Heatpump: clear watchdog notifications"
-    mode: single
-    triggers:
-      - trigger: numeric_state
-        entity_id: sensor.hc1_setpoint_roomot2
-        below: 25
-        for: "00:05:00"
-        id: hc1
-      - trigger: numeric_state
-        entity_id: sensor.hc2_setpoint_roomot2
-        below: 32
-        for: "00:05:00"
-        id: hc2
-      - trigger: state
-        entity_id: sensor.hc1_setpoint_roomot2
-        from:
-          - "unavailable"
-          - "unknown"
-        for: "00:05:00"
-        id: reads
-    actions:
-      - choose:
-          - conditions:
-              - condition: trigger
-                id: hc1
-            sequence:
-              - action: persistent_notification.dismiss
-                data:
-                  notification_id: heatpump_hc1_room_setpoint_watchdog
-          - conditions:
-              - condition: trigger
-                id: hc2
-            sequence:
-              - action: persistent_notification.dismiss
-                data:
-                  notification_id: heatpump_hc2_room_setpoint_watchdog
-          - conditions:
-              - condition: trigger
-                id: reads
-            sequence:
-              - action: persistent_notification.dismiss
-                data:
-                  notification_id: heatpump_setpoints_unavailable_watchdog
+  heatpump_setpoint_reads_failing:
+    name: "Heatpump: setpoint reads failing"
+    entity_id: binary_sensor.heatpump_setpoint_reads_failing
+    state: "on"
+    repeat:
+      - 30
+      - 120
+    can_acknowledge: true
+    skip_first: false
+    title: "Heatpump: setpoint reads failing — writes are down too"
+    message: >-
+      Setpoint sensors have been unavailable for 15 minutes, so setpoint writes
+      are not working either. Check the heatpump-api add-on log:
+      "landed on an unexpected page" means page-identity verification is
+      rejecting valid pages and the expected title markers need adjusting;
+      "Heatpump unreachable" or "backing off after repeated failures" means a
+      device or network problem.
+    done_message: "Heatpump setpoint reads recovered."
+    notifiers:
+      - persistent_notification
+      # - mobile_app_your_device
