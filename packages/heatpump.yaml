@@ -717,7 +717,7 @@ alert:
     done_message: "HC1 room setpoints back to normal."
     notifiers:
       - persistent_notification
-      # - mobile_app_your_device
+      - mobile_app_stefan_mobil
 
   heatpump_hc2_setpoint_leak:
     name: "Heatpump: HC2 room setpoint matches pool flow floor"
@@ -743,7 +743,7 @@ alert:
     done_message: "HC2 room setpoints no longer match the pool flow floor."
     notifiers:
       - persistent_notification
-      # - mobile_app_your_device
+      - mobile_app_stefan_mobil
 
   heatpump_setpoint_reads_failing:
     name: "Heatpump: setpoint reads failing"
@@ -765,4 +765,4 @@ alert:
     done_message: "Heatpump setpoint reads recovered."
     notifiers:
       - persistent_notification
-      # - mobile_app_your_device
+      - mobile_app_stefan_mobil
