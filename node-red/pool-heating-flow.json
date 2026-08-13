@@ -1,0 +1,580 @@
+[
+    {
+        "id": "tab_pool_visual",
+        "type": "tab",
+        "label": "Pool Visual",
+        "disabled": false
+    },
+    {
+        "id": "battery",
+        "type": "server-state-changed",
+        "z": "tab_pool_visual",
+        "name": "Battery SOC",
+        "server": "97fb38f1.310cb",
+        "version": 6,
+        "outputs": 1,
+        "exposeAsEntityConfig": "",
+        "entities": {
+            "entity": [
+                "sensor.sigen_inverter_battery_state_of_charge"
+            ],
+            "substring": [],
+            "regex": []
+        },
+        "outputInitially": true,
+        "stateType": "num",
+        "ifState": "",
+        "ifStateType": "num",
+        "ifStateOperator": "gt",
+        "outputOnlyOnStateChange": false,
+        "for": "",
+        "forType": "num",
+        "ignorePrevStateNull": false,
+        "ignorePrevStateUnknown": false,
+        "ignorePrevStateUnavailable": false,
+        "ignoreCurrentStateUnknown": false,
+        "ignoreCurrentStateUnavailable": false,
+        "outputProperties": [
+            {
+                "property": "payload",
+                "propertyType": "msg",
+                "value": "number",
+                "valueType": "entityState"
+            }
+        ],
+        "x": 140,
+        "y": 100,
+        "wires": [
+            [
+                "store_battery"
+            ]
+        ]
+    },
+    {
+        "id": "grid",
+        "type": "server-state-changed",
+        "z": "tab_pool_visual",
+        "name": "Grid Exporting",
+        "server": "97fb38f1.310cb",
+        "version": 6,
+        "outputs": 1,
+        "exposeAsEntityConfig": "",
+        "entities": {
+            "entity": [
+                "binary_sensor.sigen_plant_exporting_to_grid"
+            ],
+            "substring": [],
+            "regex": []
+        },
+        "outputInitially": true,
+        "stateType": "habool",
+        "ifState": "",
+        "ifStateType": "str",
+        "outputOnlyOnStateChange": false,
+        "for": "",
+        "forType": "num",
+        "ignorePrevStateNull": false,
+        "ignorePrevStateUnknown": false,
+        "ignorePrevStateUnavailable": false,
+        "ignoreCurrentStateUnknown": false,
+        "ignoreCurrentStateUnavailable": false,
+        "outputProperties": [
+            {
+                "property": "payload",
+                "propertyType": "msg",
+                "value": "boolean",
+                "valueType": "entityState"
+            }
+        ],
+        "x": 150,
+        "y": 160,
+        "wires": [
+            [
+                "store_grid"
+            ]
+        ]
+    },
+    {
+        "id": "price",
+        "type": "server-state-changed",
+        "z": "tab_pool_visual",
+        "name": "Sell Price",
+        "server": "97fb38f1.310cb",
+        "version": 6,
+        "outputs": 1,
+        "exposeAsEntityConfig": "",
+        "entities": {
+            "entity": [
+                "sensor.energy_sell_price_total"
+            ],
+            "substring": [],
+            "regex": []
+        },
+        "outputInitially": true,
+        "stateType": "num",
+        "ifState": "",
+        "ifStateType": "str",
+        "outputOnlyOnStateChange": false,
+        "for": "",
+        "forType": "num",
+        "ignorePrevStateNull": false,
+        "ignorePrevStateUnknown": false,
+        "ignorePrevStateUnavailable": false,
+        "ignoreCurrentStateUnknown": false,
+        "ignoreCurrentStateUnavailable": false,
+        "outputProperties": [
+            {
+                "property": "payload",
+                "propertyType": "msg",
+                "value": "number",
+                "valueType": "entityState"
+            }
+        ],
+        "x": 130,
+        "y": 220,
+        "wires": [
+            [
+                "store_price"
+            ]
+        ]
+    },
+    {
+        "id": "store_battery",
+        "type": "function",
+        "z": "tab_pool_visual",
+        "name": "Store Battery",
+        "func": "\nflow.set('battery_soc', msg.payload);\nreturn msg;",
+        "outputs": 1,
+        "timeout": "",
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 330,
+        "y": 100,
+        "wires": [
+            [
+                "logic"
+            ]
+        ]
+    },
+    {
+        "id": "store_grid",
+        "type": "function",
+        "z": "tab_pool_visual",
+        "name": "Store Grid",
+        "func": "flow.set('grid_exporting', msg.payload);\nreturn msg;",
+        "outputs": 1,
+        "timeout": "",
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 330,
+        "y": 160,
+        "wires": [
+            [
+                "logic"
+            ]
+        ]
+    },
+    {
+        "id": "store_price",
+        "type": "function",
+        "z": "tab_pool_visual",
+        "name": "Store Sell Price",
+        "func": "flow.set('sell_price', msg.payload);\nreturn msg;",
+        "outputs": 1,
+        "timeout": "",
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 340,
+        "y": 220,
+        "wires": [
+            [
+                "logic"
+            ]
+        ]
+    },
+    {
+        "id": "logic",
+        "type": "function",
+        "z": "tab_pool_visual",
+        "name": "Should Heat?",
+        "func": "let battery_soc = flow.get('battery_soc') || 0;\nlet grid_exporting = flow.get('grid_exporting');\nlet sell_price = flow.get('sell_price') || 0;\nlet solar_power = flow.get('solar_power') || 0;\nlet pool_temp = flow.get('pool_temp') || 0;\n\nlet shouldHeat = (\n    pool_temp < 26\n    && solar_power > 3.0\n    && (battery_soc > 0.1\n    || (grid_exporting && sell_price < 1.0))\n);\n\nmsg.payload = shouldHeat ? \"on\" : \"off\";\n\nmsg.attributes = {\n    pool_temp: pool_temp,\n    battery_soc: battery_soc,\n    grid_exporting: grid_exporting,\n    sell_price: sell_price,\n    solar_power: solar_power,\n    shouldHeat: shouldHeat\n};\nnode.warn(msg.attributes);\n\nreturn msg;",
+        "outputs": 1,
+        "timeout": "",
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 580,
+        "y": 280,
+        "wires": [
+            [
+                "b4809cf3af2f0a72"
+            ]
+        ]
+    },
+    {
+        "id": "1ef17e5445966231",
+        "type": "ha-binary-sensor",
+        "z": "tab_pool_visual",
+        "name": "Pool heating sensor",
+        "entityConfig": "18a3539878924103",
+        "version": 0,
+        "state": "payload",
+        "stateType": "msg",
+        "attributes": [],
+        "inputOverride": "allow",
+        "outputProperties": [],
+        "x": 200,
+        "y": 420,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "26a6220c6c6314e3",
+        "type": "api-call-service",
+        "z": "tab_pool_visual",
+        "name": "Enable heating",
+        "server": "97fb38f1.310cb",
+        "version": 7,
+        "debugenabled": true,
+        "action": "number.set_value",
+        "floorId": [],
+        "areaId": [],
+        "deviceId": [],
+        "entityId": [
+            "number.hc2_pool_flow_setpoint"
+        ],
+        "labelId": [],
+        "data": "{\"value\":34}",
+        "dataType": "jsonata",
+        "mergeContext": "",
+        "mustacheAltTags": false,
+        "outputProperties": [],
+        "queue": "none",
+        "blockInputOverrides": true,
+        "domain": "number",
+        "service": "set_value",
+        "x": 680,
+        "y": 340,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "85914a7da1c0c0cc",
+        "type": "switch",
+        "z": "tab_pool_visual",
+        "name": "Pool heat switch",
+        "property": "payload",
+        "propertyType": "msg",
+        "rules": [
+            {
+                "t": "eq",
+                "v": "on",
+                "vt": "str"
+            },
+            {
+                "t": "eq",
+                "v": "off",
+                "vt": "str"
+            }
+        ],
+        "checkall": "false",
+        "repair": false,
+        "outputs": 2,
+        "x": 470,
+        "y": 360,
+        "wires": [
+            [
+                "26a6220c6c6314e3",
+                "4b9f3e008d56f855"
+            ],
+            [
+                "16dfb6681f80e76a",
+                "4b9f3e008d56f855"
+            ]
+        ]
+    },
+    {
+        "id": "16dfb6681f80e76a",
+        "type": "api-call-service",
+        "z": "tab_pool_visual",
+        "name": "Disable heating",
+        "server": "97fb38f1.310cb",
+        "version": 7,
+        "debugenabled": true,
+        "action": "switch.turn_off",
+        "floorId": [],
+        "areaId": [],
+        "deviceId": [],
+        "entityId": [
+            "switch.hc2_flow_limit"
+        ],
+        "labelId": [],
+        "data": "",
+        "dataType": "jsonata",
+        "mergeContext": "",
+        "mustacheAltTags": false,
+        "outputProperties": [],
+        "queue": "none",
+        "blockInputOverrides": true,
+        "domain": "switch",
+        "service": "turn_off",
+        "x": 680,
+        "y": 400,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "b4809cf3af2f0a72",
+        "type": "rbe",
+        "z": "tab_pool_visual",
+        "name": "Change filter",
+        "func": "rbe",
+        "gap": "",
+        "start": "",
+        "inout": "out",
+        "septopics": true,
+        "property": "payload",
+        "topi": "topic",
+        "x": 130,
+        "y": 360,
+        "wires": [
+            [
+                "9437ab5b75382a6d",
+                "1ef17e5445966231"
+            ]
+        ]
+    },
+    {
+        "id": "4b9f3e008d56f855",
+        "type": "debug",
+        "z": "tab_pool_visual",
+        "name": "debug 1",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "true",
+        "targetType": "full",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 460,
+        "y": 420,
+        "wires": []
+    },
+    {
+        "id": "b1d36d1ae597c81b",
+        "type": "server-state-changed",
+        "z": "tab_pool_visual",
+        "name": "Solar power",
+        "server": "97fb38f1.310cb",
+        "version": 6,
+        "outputs": 1,
+        "exposeAsEntityConfig": "",
+        "entities": {
+            "entity": [
+                "sensor.sigen_plant_pv_power"
+            ],
+            "substring": [],
+            "regex": []
+        },
+        "outputInitially": true,
+        "stateType": "num",
+        "ifState": "",
+        "ifStateType": "str",
+        "outputOnlyOnStateChange": false,
+        "for": "",
+        "forType": "num",
+        "ignorePrevStateNull": false,
+        "ignorePrevStateUnknown": false,
+        "ignorePrevStateUnavailable": false,
+        "ignoreCurrentStateUnknown": false,
+        "ignoreCurrentStateUnavailable": false,
+        "outputProperties": [
+            {
+                "property": "payload",
+                "propertyType": "msg",
+                "value": "number",
+                "valueType": "entityState"
+            }
+        ],
+        "x": 140,
+        "y": 280,
+        "wires": [
+            [
+                "fc49d14c131cac4a"
+            ]
+        ]
+    },
+    {
+        "id": "fc49d14c131cac4a",
+        "type": "function",
+        "z": "tab_pool_visual",
+        "name": "Store Solar Power",
+        "func": "flow.set('solar_power', msg.payload);\nreturn msg;",
+        "outputs": 1,
+        "timeout": "",
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 350,
+        "y": 280,
+        "wires": [
+            [
+                "logic"
+            ]
+        ]
+    },
+    {
+        "id": "9437ab5b75382a6d",
+        "type": "function",
+        "z": "tab_pool_visual",
+        "name": "Delay",
+        "func": "const MIN_ON = 30 * 60 * 1000;  // hold ON for at least 10 min\n\n  if (msg.payload === \"on\") {\n      context.set(\"onSince\", Date.now());\n      const pending = context.get(\"offTimer\");\n      if (pending) { clearTimeout(pending); context.set(\"offTimer\", null); }\n      node.send({ payload: \"on\" });\n      return null;\n  }\n  \n  // payload === \"off\"\n  const remaining = MIN_ON - (Date.now() - (context.get(\"onSince\") || 0));\n  if (remaining <= 0) {\n      node.send({ payload: \"off\" });\n  } else {\n      const t = setTimeout(() => {\n          node.send({ payload: \"off\" });\n          context.set(\"offTimer\", null);\n      }, remaining);\n      context.set(\"offTimer\", t);\n  }\n  return null;\n",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 290,
+        "y": 360,
+        "wires": [
+            [
+                "85914a7da1c0c0cc"
+            ]
+        ]
+    },
+    {
+        "id": "8705abaecda89e56",
+        "type": "server-state-changed",
+        "z": "tab_pool_visual",
+        "name": "Pool temp",
+        "server": "97fb38f1.310cb",
+        "version": 6,
+        "outputs": 1,
+        "exposeAsEntityConfig": "",
+        "entities": {
+            "entity": [
+                "sensor.hc2_flow_temperature"
+            ],
+            "substring": [],
+            "regex": []
+        },
+        "outputInitially": true,
+        "stateType": "str",
+        "ifState": "",
+        "ifStateType": "str",
+        "ifStateOperator": "is",
+        "outputOnlyOnStateChange": true,
+        "for": "0",
+        "forType": "num",
+        "forUnits": "minutes",
+        "ignorePrevStateNull": false,
+        "ignorePrevStateUnknown": false,
+        "ignorePrevStateUnavailable": false,
+        "ignoreCurrentStateUnknown": false,
+        "ignoreCurrentStateUnavailable": false,
+        "outputProperties": [
+            {
+                "property": "payload",
+                "propertyType": "msg",
+                "value": "number",
+                "valueType": "entityState"
+            }
+        ],
+        "x": 130,
+        "y": 40,
+        "wires": [
+            [
+                "a0ac4e98af083333"
+            ]
+        ]
+    },
+    {
+        "id": "a0ac4e98af083333",
+        "type": "function",
+        "z": "tab_pool_visual",
+        "name": "Store Pool Temp",
+        "func": "\nflow.set('pool_temp', msg.payload);\nreturn msg;",
+        "outputs": 1,
+        "timeout": "",
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 350,
+        "y": 40,
+        "wires": [
+            [
+                "logic"
+            ]
+        ]
+    },
+    {
+        "id": "97fb38f1.310cb",
+        "type": "server",
+        "name": "Home Assistant",
+        "addon": true
+    },
+    {
+        "id": "18a3539878924103",
+        "type": "ha-entity-config",
+        "server": "97fb38f1.310cb",
+        "deviceConfig": "de96b9b5e95aea45",
+        "name": "Heat pool sensor",
+        "version": 6,
+        "entityType": "binary_sensor",
+        "haConfig": [
+            {
+                "property": "name",
+                "value": "Ska poolen värmas?"
+            },
+            {
+                "property": "icon",
+                "value": ""
+            },
+            {
+                "property": "entity_picture",
+                "value": ""
+            },
+            {
+                "property": "entity_category",
+                "value": ""
+            },
+            {
+                "property": "device_class",
+                "value": "heat"
+            }
+        ],
+        "resend": false,
+        "debugEnabled": false
+    },
+    {
+        "id": "de96b9b5e95aea45",
+        "type": "ha-device-config",
+        "name": "Heat pool sensor",
+        "hwVersion": "",
+        "manufacturer": "Node-RED",
+        "model": "",
+        "swVersion": ""
+    },
+    {
+        "id": "42a42d0e041356bb",
+        "type": "global-config",
+        "env": [],
+        "modules": {
+            "node-red-contrib-home-assistant-websocket": "0.80.3"
+        }
+    }
+]
