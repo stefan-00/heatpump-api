@@ -83,6 +83,9 @@ The HPM-800B7F serves classic HTML pages. There is no JSON API.
   - navigation-dependent requests (`menue.rsp`, `info.rsp`, `execset.rsp`) pass `retry_on_expiry=False` to `session.request`, because `login()` resets the device to root and restores no navigation, so a blind resend is misaddressed. They raise `SessionExpiredError`; `_webrc_operation` re-runs the whole navigate+act once
   - `HeatpumpClient._check_generation` re-checks `session.generation` before **each** `execset`, so a re-login mid-sequence cannot retarget the remaining writes
   - writes are read back and confirmed in the routers; label-matching navigation alone can silently land on the wrong circuit since HC1/HC2 share identical child labels
+  - `_device_lock` (formerly `_webrc_lock`) serialises **every** request to the device, including the `v*.rsp` status fetches. It originally covered only WEB-RC calls, on the assumption that view pages don't touch navigation state — on 2026-08-13 a status poll interleaved between `info.rsp` and `execset` and HC2 `roomOT2` took the `minFl` value. What matters is that a request shares the session, not what kind it is
+  - `_reconfirm_page` re-selects the target page at its own `(branchnr, level)` and re-checks the title immediately **before** the first `execset`. Verifying only at the end of navigation cannot protect against something disturbing the session inside the gap that follows
+  - **no-op writes are skipped**: a write whose requested value already equals the stored value *cannot be verified*, because read-back passes wherever it landed. Skipping them is what makes read-back a real check for the writes that remain — and it removes almost all device traffic, since the pool controller re-asserts an unchanged floor every 10–25 s
 
 ## Architecture notes
 
