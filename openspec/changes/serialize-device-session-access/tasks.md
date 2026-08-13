@@ -32,4 +32,4 @@
 - [x] 5.1 Bump `heatpump-api/config.yaml` version from `0.1.11` to `0.1.12`
 - [x] 5.2 Update `CLAUDE.md`: the lock covers all device requests, page identity is re-confirmed before writing, and no-op writes are skipped because they are unverifiable
 - [x] 5.3 Commit and push directly to `main`
-- [ ] 5.4 After deploying, confirm in the log that repeated `PATCH hc2/flow-limit` calls with an unchanged value complete with no `execset` POSTs
+- [x] 5.4 After deploying, confirm in the log that repeated `PATCH hc2/flow-limit` calls with an unchanged value complete with no `execset` POSTs
