@@ -2,13 +2,11 @@
 
 ### Requirement: Skip device writes that would not change a value
 
+Before issuing any `execset`, the service SHALL compare the requested value with the value currently shown on the verified page, and SHALL skip the write when they are equal within the same tolerance used for read-back confirmation. Skipping SHALL be logged.
+
 A write whose requested value already equals the value the device reports **cannot be verified**: the
 read-back afterwards passes whether the write landed on the intended parameter, on a different
 parameter, or nowhere at all. Such writes therefore carry risk with no benefit.
-
-Before issuing any `execset`, the service SHALL compare the requested value with the value currently
-shown on the verified page, and SHALL skip the write when they are equal within the same tolerance
-used for read-back confirmation. Skipping SHALL be logged.
 
 An operation in which every requested value is already satisfied SHALL issue no `execset` at all and
 SHALL still return success with the current confirmed state, so callers cannot distinguish a skipped

@@ -2,15 +2,15 @@
 
 ### Requirement: Verify the landed WEB-RC page identity after navigation
 
+After completing a navigation path, the service SHALL parse the page's self-identifying title row and SHALL confirm it matches the intended target before the page is read from or written to.
+
 Every WEB-RC page renders a self-identifying title as the first row of its `<!-- start_mainpane -->`
 block (for example `heatCirc1 setpoints`, `heatCirc2 F-SP.limit`). Because `(branchnr, level)`
 coordinates collide across circuits — HC1 and HC2 setpoints pages are both `(bn=2, lv=4)`, and both
 setpoint-limitation pages are both `(bn=2, lv=5)` — this title is the only evidence of which page a
 navigation actually reached.
 
-After completing a navigation path, the service SHALL parse the title row and SHALL confirm it
-matches the intended target before the page is read from or written to. Matching SHALL be
-case-insensitive and SHALL require both a circuit marker (`heatcirc1` or `heatcirc2`) and a page
+Matching SHALL be case-insensitive and SHALL require both a circuit marker (`heatcirc1` or `heatcirc2`) and a page
 marker (`setpoints` or `f-sp.limit`) to be present, rather than exact equality with a full string, so
 that cosmetic firmware differences do not reject valid pages.
 
@@ -35,14 +35,14 @@ SHALL log the observed title at WARNING level and SHALL surface a 502 error.
 
 ### Requirement: Guard the window between navigation and write with the session generation
 
+Each WEB-RC operation SHALL capture the session generation after its navigation completes and SHALL confirm the generation is unchanged immediately before **each** `execset` request it issues.
+
 A re-authentication resets the device's navigation position to root without restoring the previous
-path, so any `(branchnr, level)` write issued afterwards is misaddressed. The service maintains a
+path, so any `(branchnr, level)` write issued afterwards is misaddressed. The service SHALL maintain a
 monotonically increasing session generation counter that increments on every successful login.
 
-Each WEB-RC operation SHALL capture the session generation after its navigation completes and SHALL
-confirm the generation is unchanged immediately before **each** `execset` request it issues. Where an
-operation writes several parameters in sequence, the check SHALL be repeated before every individual
-write, not only before the first.
+Where an operation writes several parameters in sequence, the check SHALL be repeated before every
+individual write, not only before the first.
 
 If the generation has changed, the service SHALL abandon the write and SHALL NOT issue the `execset`
 request against the stale navigation context.

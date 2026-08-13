@@ -2,10 +2,11 @@
 
 ### Requirement: Re-confirm page identity immediately before writing
 
+Before issuing the first `execset` of an operation, the service SHALL re-select the target page at its own `(branchnr, level)` coordinates and SHALL re-confirm the page title identifies the intended circuit and page.
+
 Verifying navigation only at the point it completes cannot protect against anything that disturbs the
-session afterwards. Before issuing the first `execset` of an operation, the service SHALL re-select
-the target page at its own `(branchnr, level)` coordinates and SHALL re-confirm the page title
-identifies the intended circuit and page.
+session afterwards — which is how the 2026-08-13 leak happened, with a status poll landing between the
+range reads and the writes.
 
 If the re-confirmation fails, the service SHALL NOT issue any write and SHALL surface a 502.
 
