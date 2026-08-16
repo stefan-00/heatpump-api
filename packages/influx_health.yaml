@@ -1,0 +1,117 @@
+# InfluxDB ingestion freshness alert.
+#
+# Why: on 2026-08-14 all InfluxDB writes stopped for ~39 h and nothing surfaced
+# it. Grafana kept answering queries from old data and drew a flat line across
+# the gap. HA-side entity staleness would NOT have caught it either — the
+# entities were updating fine; only the write path was broken.
+#
+# This is therefore an END-TO-END check: HA writes to InfluxDB, then reads back
+# the newest timestamp and reports how old it is. Both halves have to work.
+#
+# ---------------------------------------------------------------------------
+# INSTALL
+#
+# 1. Save this file as /config/packages/influx_health.yaml
+#
+# 2. Register it in configuration.yaml, alongside the existing entry:
+#
+#      homeassistant:
+#        packages:
+#          heatpump: !include packages/heatpump.yaml
+#          influx_health: !include packages/influx_health.yaml     # <-- add
+#
+# 3. Add the InfluxDB credentials back to /config/secrets.yaml. The integration
+#    itself now keeps them in the UI, but this REST sensor needs its own copy:
+#
+#      influxdb_user: homeassistant
+#      influxdb_password: <the password you set on the influx user>
+#
+# 4. Developer Tools > YAML > Check configuration, then restart.
+#
+# 5. Verify: sensor.influxdb_last_write_age should read a small number of
+#    minutes. If it reads 9999 the query or the credentials are wrong — check
+#    the HA log for the REST error before assuming ingestion is broken.
+# ---------------------------------------------------------------------------
+
+rest:
+  - resource: http://a0d7b954-influxdb:8086/query
+    method: GET
+    scan_interval: 900          # every 15 min; the alert threshold is 60 min
+    timeout: 15
+    authentication: basic
+    username: !secret influxdb_user
+    password: !secret influxdb_password
+    params:
+      db: homeassistant
+      epoch: s
+      # heatpump_outlet_temperature changes every few minutes, so it is a good
+      # canary. Measurements are named after the unit because configuration.yaml
+      # sets measurement_attr: unit_of_measurement.
+      q: >-
+        SELECT last("value") FROM "°C"
+        WHERE "entity_id" = 'heatpump_outlet_temperature'
+    sensor:
+      - name: InfluxDB last write age
+        unique_id: influxdb_last_write_age
+        unit_of_measurement: min
+        state_class: measurement
+        icon: mdi:database-clock
+        # 9999 on any failure (auth rejected, no series, malformed reply) so the
+        # alert fires. A broken check must never look healthy.
+        value_template: >-
+          {%- set results = value_json['results'] if value_json['results'] is defined else [] -%}
+          {%- set res = results[0] if results | count > 0 else {} -%}
+          {%- set series = res['series'] if res['series'] is defined else [] -%}
+          {%- if series | count == 0 -%}
+            9999
+          {%- else -%}
+            {# NB: bracket notation is mandatory — series[0].values would
+               resolve to the dict's built-in .values() method, not the key. #}
+            {%- set ts = series[0]['values'][0][0] | int(0) -%}
+            {%- if ts <= 0 -%}
+              9999
+            {%- else -%}
+              {{ ((as_timestamp(now()) - ts) / 60) | round(0) }}
+            {%- endif -%}
+          {%- endif -%}
+
+automation:
+  - alias: InfluxDB ingestion stalled
+    id: influxdb_ingestion_stalled
+    description: >-
+      Fires when the newest point in InfluxDB is more than an hour old, i.e.
+      Home Assistant has stopped successfully writing.
+    triggers:
+      - trigger: numeric_state
+        entity_id: sensor.influxdb_last_write_age
+        above: 60
+        for: "00:15:00"
+      - trigger: state
+        entity_id: sensor.influxdb_last_write_age
+        to: unavailable
+        for: "00:30:00"
+    actions:
+      - action: persistent_notification.create
+        data:
+          notification_id: influxdb_stalled
+          title: InfluxDB ingestion stalled
+          message: >-
+            No new InfluxDB data for
+            {{ states('sensor.influxdb_last_write_age') }} minutes.
+            Check Settings > Devices & Services > InfluxDB (credentials live in
+            the UI, not configuration.yaml) and the HA log for write errors.
+    mode: single
+
+  - alias: InfluxDB ingestion recovered
+    id: influxdb_ingestion_recovered
+    description: Clears the stalled notification once data is flowing again.
+    triggers:
+      - trigger: numeric_state
+        entity_id: sensor.influxdb_last_write_age
+        below: 30
+        for: "00:10:00"
+    actions:
+      - action: persistent_notification.dismiss
+        data:
+          notification_id: influxdb_stalled
+    mode: single

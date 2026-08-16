@@ -1,0 +1,33 @@
+# Nightly Git Exporter run.
+#
+# Why: "Start on boot" only fires on a HAOS *host* reboot — restarting Home
+# Assistant Core leaves add-on containers untouched. Without a schedule the
+# config export runs almost never (it silently went 2026-06-17 .. 2026-08-14
+# without a single push).
+#
+# Where: append as a list item to /config/automations.yaml
+#        (configuration.yaml already has `automation: !include automations.yaml`)
+#
+# Before using: replace SLUG_HERE with the real add-on slug. Find it in the
+# add-on page URL in your browser, e.g.
+#   http://.../hassio/addon/abc12345_git_exporter/info
+#                            ^^^^^^^^^^^^^^^^^^^^
+# Verify first from Developer Tools > Actions: call hassio.addon_start with the
+# slug and confirm the add-on log shows a run.
+#
+# Note: the add-on exits non-zero whenever there is nothing to commit, so most
+# nights this "fails" harmlessly. Do not add a watchdog or retry around it.
+
+- alias: Nightly config export
+  id: nightly_config_export
+  description: >-
+    Runs the Home Assistant Git Exporter add-on so /config is pushed to
+    stefan-00/ha-config even when the host is not rebooted.
+  triggers:
+    - trigger: time
+      at: "03:30:00"
+  actions:
+    - action: hassio.addon_start
+      data:
+        addon: 68413af6_git-exporter
+  mode: single
