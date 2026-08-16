@@ -19,7 +19,9 @@ build/
 .idea/
 .vscode/
 
-# Exploration / debug scripts
-debug_*.py
-explore_*.py
-*_dump.md
+# Exploration / debug scripts, while still being hacked on in the project root.
+# Anchored to the root on purpose: once a probe is worth keeping, move it to
+# research/ and it becomes tracked.
+/debug_*.py
+/explore_*.py
+/*_dump.md
