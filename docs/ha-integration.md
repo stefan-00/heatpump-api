@@ -48,7 +48,7 @@ per-request budget (default 15 s, the `request_timeout` add-on option). Note tha
 
 ### Step 1 — Copy the package file
 
-Copy [`packages/heatpump.yaml`](../packages/heatpump.yaml) from this repo into your HA
+Copy [`homeassistant/packages/heatpump.yaml`](../homeassistant/packages/heatpump.yaml) from this repo into your HA
 config directory as `packages/heatpump.yaml`. It contains all sensors, REST commands,
 and number entities.
 

@@ -29,6 +29,15 @@ heatpump-api/          # application code
       status.py        # GET /api/v1/status
       setpoints.py     # GET/PATCH /api/v1/circuits/{circuit_id}/setpoints
                        #   GET/PATCH /api/v1/circuits/hc2/flow-limit (HC2 only)
+repository.json        # HA add-on repository manifest — must stay at the root,
+                       #   alongside heatpump-api/, for Supervisor to find the add-on
+homeassistant/         # artefacts deployed into the HA box (copied in by hand)
+  packages/            # heatpump.yaml (sensors, numbers), influx_health.yaml (ingestion alert)
+  automations/         # nightly-config-export.yaml
+  node-red/            # pool-heating-flow.json
+  grafana/             # dashboards
+research/              # WEB-RC protocol probes — see research/README.md
+docs/                  # written docs; import/ holds the source PDFs they derive from
 openspec/              # spec-driven change workflow
 ```
 
