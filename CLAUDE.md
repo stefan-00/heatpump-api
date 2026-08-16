@@ -29,17 +29,33 @@ heatpump-api/          # application code
       status.py        # GET /api/v1/status
       setpoints.py     # GET/PATCH /api/v1/circuits/{circuit_id}/setpoints
                        #   GET/PATCH /api/v1/circuits/hc2/flow-limit (HC2 only)
-repository.json        # HA add-on repository manifest — must stay at the root,
-                       #   alongside heatpump-api/, for Supervisor to find the add-on
+repository.json        # HA add-on repository manifest
 homeassistant/         # artefacts deployed into the HA box (copied in by hand)
-  packages/            # heatpump.yaml (sensors, numbers), influx_health.yaml (ingestion alert)
-  automations/         # nightly-config-export.yaml
-  node-red/            # pool-heating-flow.json
-  grafana/             # dashboards
-research/              # WEB-RC protocol probes — see research/README.md
-docs/                  # written docs; import/ holds the source PDFs they derive from
+  packages/
+    heatpump.yaml      # sensors, writable number entities, rest_commands
+    influx_health.yaml # InfluxDB ingestion-freshness sensor + alert
+  automations/
+    nightly-config-export.yaml   # runs the Git Exporter add-on on a schedule
+  node-red/
+    pool-heating-flow.json
+  grafana/             # heatpump + sigenergy dashboards
+research/              # WEB-RC protocol probes and the menu-tree dump
+                       #   (see research/README.md; root-level debug_*.py stays gitignored)
+docs/                  # written documentation
+import/                # source PDFs (manuals) the docs are derived from
 openspec/              # spec-driven change workflow
 ```
+
+`heatpump-api/` and `repository.json` **must stay at the repository root**:
+together they make this repo installable as an HA add-on repository, and
+Supervisor only scans top-level directories for an add-on `config.yaml`.
+Nesting the add-on breaks installs and updates on the live instance.
+
+Everything under `homeassistant/` is copied into HA by hand. Paths written
+*inside* those files (`packages/heatpump.yaml`, `/config/packages/…`) refer to
+HA's own config directory, not to this repo — don't "fix" them to match the
+repo layout. The live `/config` is separately mirrored to the private repo
+`stefan-00/ha-config` by the Git Exporter add-on.
 
 ## Local development
 
