@@ -89,6 +89,32 @@ API docs available at `http://localhost:8765/docs` once running.
 | `/data/options.json` | Running as HA add-on (written by HA Supervisor) |
 | Env vars | Local dev: `HEATPUMP_URL`, `HEATPUMP_USERNAME`, `HEATPUMP_PASSWORD`, `PORT`, `HOST` |
 
+## Grafana / InfluxDB access
+
+The dashboards under `homeassistant/grafana/` are read and edited live through
+the **`grafana-home` MCP server** (user scope, so it works from any project).
+It points at the Grafana add-on on the HA box, `192.168.68.75`.
+
+- `search_dashboards` / `get_dashboard_summary` / `update_dashboard` — the
+  summary tool gives panel titles and types without pulling full dashboard JSON
+  into context; use it to plan edits.
+- Datasource: InfluxDB 1.x, uid `efpfpxt9z6t4wc`, database `homeassistant`.
+  There is no native InfluxQL tool, so query through the datasource proxy with
+  `grafana_api_request` on
+  `/api/datasources/proxy/uid/efpfpxt9z6t4wc/query?db=homeassistant&epoch=s&q=…`,
+  passing a `jq` expression to trim the response.
+- Measurements are named after the **unit** (`°C`, `W`, `%`, …), not the
+  entity, because the HA InfluxDB integration is configured with
+  `measurement_attr: unit_of_measurement`; the entity is a tag (`entity_id`).
+- The separate `grafana` MCP server is **Kambi work** Grafana — same tool
+  names under a different prefix. Don't cross them.
+
+`~/.claude/grafana-home-mcp.sh` wraps the server because the add-on serves
+HTTPS with a self-signed cert and redirects everything to a rotating
+`/api/hassio_ingress/<session>/` prefix. The wrapper resolves that prefix at
+server start, so if the add-on restarts mid-session the prefix goes stale and
+calls fail — restart Claude Code to re-resolve.
+
 ## HPM web UI protocol
 
 The HPM-800B7F serves classic HTML pages. There is no JSON API.
