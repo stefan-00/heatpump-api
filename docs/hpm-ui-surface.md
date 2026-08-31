@@ -187,11 +187,21 @@ visited before child pages resolve correctly.
 
 ### Access codes (live, from device)
 
-| Level | Username | Code |
-|-------|----------|------|
-| 1 | user | 9999 |
-| 2 | operator | 1111 |
-| 3 | service | 4444 |
+| Level | Username | Code | Unlocks |
+|-------|----------|------|---------|
+| 1 | user | 9999 | |
+| 2 | operator | 1111 | |
+| 3 | service | 4444 | HC setpoints, setpoint limitation — what the API uses |
+| 4 | — | 5555 | writable `interfaces` / network parameters (`3.3.n`) |
+
+Level 4 is not listed on the access-codes page itself — that page only shows
+the codes at or below the current session level, so the level-3 dump below
+stops at `level3`.
+
+**Visibility and writability are separate gates.** At level 3 the `interfaces →
+Ethernet` page renders in full but every field is read-only; 5555 makes them
+editable. A read-only field generally means "one level up", not "not settable
+over the web".
 
 ### Full tree structure (access level 4444)
 
@@ -267,6 +277,7 @@ WEB-RC root  (branchnr=1, level=0)
 │       └── Smart Grid          (inp1=0, Inp2=0)
 ├── interfaces  (bn=3, lv=1)
 │   ├── Ethernet   IP=192.168.1.11, DHCP=off, MAC=<device-mac>, host=hpm-800B7F
+│   │              (params 3.3.n — read-only below access level 4 / code 5555)
 │   └── heatpumps  HP interface status
 ├── configuration  (bn=4, lv=1)
 │   ├── inputs   term.17–28 (Pt1000 sensors + meter/mess + 0-10V)

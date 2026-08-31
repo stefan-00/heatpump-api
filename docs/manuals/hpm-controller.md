@@ -6,17 +6,32 @@ Source: `import/HPM_HBInstIB_en.pdf` (Part 1) and `import/Aquarea-part2-modules.
 
 ## Access levels
 
-The HPM menu is structured into five access levels. Higher levels expose more parameters.
+The HPM menu is structured into five access levels. Higher levels expose more
+parameters *and* make more of them writable.
+
+The manual's generic defaults are not what this device uses — the codes are per
+controller, stored under `global → service → access codes` (`1.3.5.n`). Codes
+verified on our unit:
 
 | Level | Code | Scope |
 |---|---|---|
 | 0 | *(none)* | End-user read-only |
-| 1 | 1111 | Operator |
-| 2 | 2222 | Service technician |
-| 3 | 3333 | Advanced service |
-| 4 | 4444 | WEB-RC / full configuration |
+| 1 | 9999 | Operator |
+| 2 | 1111 | Service technician |
+| 3 | 4444 | Advanced service — heating-circuit setpoints, setpoint limitation |
+| 4 | 5555 | Full configuration — `interfaces`, network parameters |
 
 Enter a code via the **WEB-RC** menu path: `webfb.rsp` → `getcode.rsp` with `code=<CODE>&Set=OK&branchnr=1&level=0`.
+
+**Level 3 is not enough for everything it displays.** At 4444 the `interfaces →
+Ethernet` page (`3.3.n`) renders but every field is read-only; entering 5555
+makes them editable. Expect the same pattern elsewhere — visibility and
+writability are separate gates, so a read-only field usually means "one level
+up", not "not settable over the web".
+
+The access-codes page itself only lists the codes at or below the session's
+current level, which is why our level-3 dump shows rows for levels 1–3 and no
+level 4, even though the manual documents `1.3.5.4 level 4`.
 
 ---
 
@@ -148,6 +163,42 @@ T_flow = T_base + slope × (T_room_setpoint − T_outdoor) ^ exponent
 |---|---|---|---|
 | SP-tank | — | — | DHW storage target temperature |
 | TankMax | ≤ 50 °C | — | Maximum tank temperature (HP only; booster heater can exceed) |
+
+---
+
+## Network interface (`interfaces → Ethernet`, `3.3.n`)
+
+Source: `import/Aquarea-part2-modules.pdf` §9.3. **Requires access code 5555
+(level 4) to edit** — at level 3 the page is visible but read-only.
+
+| Param | Name | Notes | Live value |
+|---|---|---|---|
+| 3.3.1 | active | 0 = interface off, 1 = on | 1 |
+| 3.3.2 | host name | own host name | hpm-800B7F |
+| 3.3.3 | MAC-adr | read-only | 00:1F:FC:80:0B:7F |
+| 3.3.4 | DHCPC | 0 = fixed IP, 1 = from DHCP server | 0 |
+| 3.3.5 | IP-no | fixed address, used when DHCPC=0 | 192.168.1.11 |
+| 3.3.6 | netMask | network mask | 255.255.255.0 |
+| 3.3.8 | defaultGW | default gateway | 192.168.178.1 ⚠ |
+| 3.3.9 | nameserver | DNS server | 192.168.178.1 ⚠ |
+| 3.3.10 | Link | link status, read-only | LF |
+| 3.3.11 | lowSpeed | 1 = force 10 Mbit/s | 0 |
+
+⚠ Gateway and nameserver are still the German factory defaults and are not on
+the device's own `192.168.1.0/24` subnet. Harmless for LAN-local access, which
+is all the add-on needs.
+
+Changes take effect after a **warm start** (`global → service → cold- warm
+start → warm start = 1`, `1.3.4.1`) or a power cycle. Never set `coldStSys`
+(`1.3.4.6`) — it resets every parameter to defaults.
+
+Keep `DHCPC = 0`. The add-on's `heatpump_url` needs a stable LAN IP (a hostname
+does not work), so use a router-side DHCP reservation if you want the router to
+own the addressing. Changing the address means updating `heatpump_url` in the
+add-on options and restarting it.
+
+In a cascade install, loading a system diagram **overwrites** the slave
+controllers' IP addresses (HPM Part 1, table 2.1: .11 / .12 / .13).
 
 ---
 
