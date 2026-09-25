@@ -138,6 +138,14 @@
           "rawQuery": true,
           "resultFormat": "time_series",
           "refId": "C"
+        },
+        {
+          "datasource": { "type": "influxdb", "uid": "${DS_INFLUXDB}" },
+          "alias": "Defrost",
+          "query": "SELECT last(\"value\") FROM \"binary_sensor.heatpump_defrost\" WHERE $timeFilter GROUP BY time($__interval) fill(previous)",
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "refId": "D"
         }
       ]
     },
@@ -249,6 +257,64 @@
           "rawQuery": true,
           "resultFormat": "time_series",
           "refId": "A"
+        }
+      ]
+    },
+    {
+      "datasource": { "type": "influxdb", "uid": "${DS_INFLUXDB}" },
+      "description": "HC Setpoint is the flow temperature the HPM asks the heat pump for (2 °C = no demand). If it sits above the outlet while the compressor runs, the unit is not delivering; if it sits at the outlet, the controller is asking for too little. Valve positions are the Y-contr. signals (%, right axis); their direction (100 % = open to buffer) is not yet verified.",
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "stepAfter",
+            "lineWidth": 2,
+            "fillOpacity": 0,
+            "showPoints": "never",
+            "spanNulls": true,
+            "axisPlacement": "auto"
+          },
+          "unit": "celsius"
+        },
+        "overrides": [
+          {
+            "matcher": { "id": "byRegexp", "options": "valve.*" },
+            "properties": [
+              { "id": "unit", "value": "percent" },
+              { "id": "custom.axisPlacement", "value": "right" },
+              { "id": "min", "value": 0 },
+              { "id": "max", "value": 100 },
+              { "id": "custom.lineStyle", "value": { "fill": "dash", "dash": [10, 10] } },
+              { "id": "custom.lineWidth", "value": 1 }
+            ]
+          }
+        ]
+      },
+      "gridPos": { "h": 9, "w": 24, "x": 0, "y": 32 },
+      "id": 6,
+      "options": {
+        "legend": { "calcs": ["min", "max", "mean", "lastNotNull"], "displayMode": "table", "placement": "bottom", "showLegend": true },
+        "tooltip": { "mode": "multi", "sort": "none" }
+      },
+      "title": "Heat-source demand, buffer & mixing valves",
+      "type": "timeseries",
+      "targets": [
+        {
+          "datasource": { "type": "influxdb", "uid": "${DS_INFLUXDB}" },
+          "alias": "$tag_entity_id",
+          "query": "SELECT last(\"value\") FROM \"°C\" WHERE (\"entity_id\" =~ /^(heatpump_hc_setpoint|heatpump_outlet_temperature|hc2_flow_setpoint|heatpump_buffer_temperature|heatpump_buffer_setpoint)$/) AND $timeFilter GROUP BY time($__interval), \"entity_id\" fill(previous)",
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "refId": "A"
+        },
+        {
+          "datasource": { "type": "influxdb", "uid": "${DS_INFLUXDB}" },
+          "alias": "valve $tag_entity_id",
+          "query": "SELECT last(\"value\") FROM \"%\" WHERE (\"entity_id\" =~ /^hc[12]_valve_position$/) AND $timeFilter GROUP BY time($__interval), \"entity_id\" fill(previous)",
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "refId": "B"
         }
       ]
     }

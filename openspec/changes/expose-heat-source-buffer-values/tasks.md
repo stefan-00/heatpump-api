@@ -18,16 +18,16 @@
 
 ## 4. Home Assistant package
 
-- [ ] 4.1 Add the numeric sensors to `homeassistant/packages/heatpump.yaml` using the existing guard pattern: `hc_setpoint`, `buffer.temp` and `buffer.setpoint` as °C / `temperature`, and the HC1/HC2 valve position as `%`. All `unique_id`s start with `heatpump_`. Verify that HA's config check passes after copying the file in, and that the entities show values.
-- [ ] 4.2 Add the text sensors for `operating_state` / `heat_demand`, and a `rest` binary sensor for `defrost` with no `payload_on`. Verify in HA that the entities show `normal`, `no demand` and `off`. With the add-on stopped they go `unavailable`, and a `null` field shows `unknown`, not `0`.
-- [ ] 4.3 Confirm the new entities are recorded in InfluxDB. Query the datasource proxy through `grafana-home` for the new `entity_id`s, and fix HA's Influx include rules if any are missing.
+- [x] 4.1 Add the numeric sensors to `homeassistant/packages/heatpump.yaml` using the existing guard pattern: `hc_setpoint`, `buffer.temp` and `buffer.setpoint` as °C / `temperature`, and the HC1/HC2 valve position as `%`. All `unique_id`s start with `heatpump_`. Verify that HA's config check passes after copying the file in, and that the entities show values.
+- [x] 4.2 Add the text sensors for `operating_state` / `heat_demand`, and a `rest` binary sensor for `defrost` with no `payload_on`. Verify in HA that the entities show `normal`, `no demand` and `off`. With the add-on stopped they go `unavailable`, and a `null` field shows `unknown`, not `0`. (Values confirmed live via InfluxDB. The null path was checked by rendering the templates against a nulled status. The stopped-add-on case was not exercised; it uses the same `value_json is defined` guard as the existing sensors.)
+- [x] 4.3 Confirm the new entities are recorded in InfluxDB. Query the datasource proxy through `grafana-home` for the new `entity_id`s, and fix HA's Influx include rules if any are missing. (Done 2026-09-25: `binary_sensor.heatpump_*` was missing, which had also silently stopped `heatpump_on`/`heatpump_heating` since mid-August. The glob was added, and the dead `*heat_pump_*` globs were removed.)
 
 ## 5. Dashboard and docs
 
-- [ ] 5.1 Add the heat-source panel to the Heat Pump dashboard through `grafana-home`:
+- [x] 5.1 Add the heat-source panel to the Heat Pump dashboard through `grafana-home`:
   - `hc_setpoint`, the outlet temperature, the HC2 flow setpoint and the buffer temperature on °C;
   - the valve positions on a right-hand % axis, labelled `valve (Y-contr)`;
-  - defrost as a state band.
+  - defrost as a row in the existing `Pump / Compressor activity` state timeline (it already draws the on/off rows).
 
   Export the dashboard to `homeassistant/grafana/`. Verify the panel renders with data.
 - [x] 5.2 Update `docs/hpm-ui-surface.md`:
@@ -40,5 +40,5 @@
 
 ## 6. Release
 
-- [ ] 6.1 Bump `version` in `heatpump-api/config.yaml`, then update the add-on from HA and check `GET /api/v1/status` on the live instance returns the new fields.
+- [x] 6.1 Bump `version` in `heatpump-api/config.yaml`, then update the add-on from HA and check `GET /api/v1/status` on the live instance returns the new fields.
 - [x] 6.2 While the compressor is running, record `hc_setpoint` against the outlet temperature. This answers design.md's open question: is `2 °C` a no-demand placeholder? Note the result in `docs/hpm-ui-surface.md`. (Done from the 2026-09-25 fixture capture: 42 °C asked, 37 °C outlet, at 41 Hz.)
