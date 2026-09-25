@@ -52,7 +52,15 @@
           },
           "unit": "celsius"
         },
-        "overrides": []
+        "overrides": [
+          {
+            "matcher": { "id": "byName", "options": "hc1_flow_setpoint" },
+            "properties": [
+              { "id": "custom.lineStyle", "value": { "fill": "dash", "dash": [10, 10] } },
+              { "id": "custom.fillOpacity", "value": 0 }
+            ]
+          }
+        ]
       },
       "gridPos": { "h": 9, "w": 24, "x": 0, "y": 0 },
       "id": 1,
@@ -66,7 +74,7 @@
         {
           "datasource": { "type": "influxdb", "uid": "${DS_INFLUXDB}" },
           "alias": "$tag_entity_id",
-          "query": "SELECT mean(\"value\") FROM \"°C\" WHERE (\"entity_id\" =~ /^(heatpump_outdoor_temperature|heatpump_outlet_temperature|heatpump_return_temperature|hc1_flow_temperature)$/) AND $timeFilter GROUP BY time($__interval), \"entity_id\" fill(previous)",
+          "query": "SELECT mean(\"value\") FROM \"°C\" WHERE (\"entity_id\" =~ /^(heatpump_outdoor_temperature|heatpump_outlet_temperature|heatpump_return_temperature|hc1_flow_temperature|hc1_flow_setpoint)$/) AND $timeFilter GROUP BY time($__interval), \"entity_id\" fill(previous)",
           "rawQuery": true,
           "resultFormat": "time_series",
           "refId": "A"
