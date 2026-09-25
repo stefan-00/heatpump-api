@@ -8,7 +8,7 @@ from fastapi import HTTPException
 
 from .config import settings
 from .models import FlowLimit, HcSetpoints, SystemStatus
-from .parsers import PAGE_FLOW_LIMIT, PAGE_SETPOINTS, extract_param, page_matches, parse_dhw, parse_float, parse_flow_limit, parse_hc1, parse_hc2, parse_hc_setpoints, parse_hp1, parse_operating_mode, parse_page_title
+from .parsers import PAGE_FLOW_LIMIT, PAGE_SETPOINTS, extract_param, page_matches, parse_buffer, parse_dhw, parse_float, parse_flow_limit, parse_hc1, parse_hc2, parse_hc_setpoints, parse_hp1, parse_operating_mode, parse_page_title
 from .session import SessionExpiredError, SessionManager, session_manager
 
 logger = logging.getLogger(__name__)
@@ -75,25 +75,26 @@ class HeatpumpClient:
 
     async def get_status(self) -> SystemStatus:
         base = settings.heatpump_url.rstrip("/")
-        # Hold the device lock for the whole set of fetches. The five view pages
+        # Hold the device lock for the whole set of fetches. The view pages
         # stay concurrent with each other — they perform no navigation — but they
         # must not slip between another operation's navigation and its writes.
         try:
             async with self._device_lock:
-                hp1_resp, hc1_resp, hc2_resp, dhw_resp, sys_resp = await asyncio.gather(
+                hp1_resp, hc1_resp, hc2_resp, dhw_resp, sys_resp, buf_resp = await asyncio.gather(
                     self._session.request("GET", f"{base}/v21.rsp"),
                     self._session.request("GET", f"{base}/v30.rsp"),
                     self._session.request("GET", f"{base}/v3.rsp"),
                     self._session.request("GET", f"{base}/v107000.rsp"),
                     self._session.request("GET", f"{base}/v0.rsp"),
+                    self._session.request("GET", f"{base}/v100100.rsp"),
                 )
         except httpx.RequestError as e:
             logger.warning("Heatpump unreachable during status fetch: %r", e)
             raise HTTPException(status_code=502, detail=f"Heatpump unreachable: {e!r}") from e
 
-        hp1_html, hc1_html, hc2_html, dhw_html, sys_html = (
+        hp1_html, hc1_html, hc2_html, dhw_html, sys_html, buf_html = (
             r.content.decode("latin-1")
-            for r in (hp1_resp, hc1_resp, hc2_resp, dhw_resp, sys_resp)
+            for r in (hp1_resp, hc1_resp, hc2_resp, dhw_resp, sys_resp, buf_resp)
         )
 
         try:
@@ -120,6 +121,13 @@ class HeatpumpClient:
             status.heating_circuit_2 = parse_hc2(hc2_html)
         except ValueError as e:
             logger.warning("Failed to parse HC2 status (v3.rsp) — %.200s", str(e))
+
+        # The buffer is best-effort for the same reason: it was added after the
+        # core fields, and an unexpected page must not break them.
+        try:
+            status.buffer = parse_buffer(buf_html)
+        except ValueError as e:
+            logger.warning("Failed to parse buffer status (v100100.rsp) — %.200s", str(e))
 
         return status
 

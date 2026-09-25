@@ -10,6 +10,13 @@ class HeatPumpUnit(BaseModel):
     return_temp: float
     frequency: int
     error_code: str
+    # Heat-source demand (v21.rsp), best-effort. hc_setpoint is what the HPM
+    # asks the heat pump for; the device shows a low placeholder (seen: 2 °C)
+    # while there is no demand, and it is reported as-is.
+    hc_setpoint: float | None = None
+    operating_state: str | None = None
+    heat_demand: str | None = None
+    defrost: bool | None = None
 
 
 class HeatingCircuit(BaseModel):
@@ -19,6 +26,7 @@ class HeatingCircuit(BaseModel):
     room_ot1: float | None = None
     room_ot2: float | None = None
     pump_on: bool
+    valve_position: float | None = None  # mixing valve Y-contr., %
 
 
 class HeatingCircuit2(BaseModel):
@@ -37,11 +45,19 @@ class HeatingCircuit2(BaseModel):
     room_ot1: float | None = None
     room_ot2: float | None = None
     pump_on: bool | None = None
+    valve_position: float | None = None  # mixing valve Y-contr., %
 
 
 class DomesticHotWater(BaseModel):
     setpoint: float
     actual_temp: float
+
+
+class Buffer(BaseModel):
+    """Buffer tank (v100100.rsp), best-effort."""
+
+    temp: float | None = None
+    setpoint: float | None = None  # zone 1 (SP-zone1)
 
 
 class SystemStatus(BaseModel):
@@ -51,6 +67,7 @@ class SystemStatus(BaseModel):
     heating_circuit_1: HeatingCircuit
     heating_circuit_2: HeatingCircuit2 | None = None
     domestic_hot_water: DomesticHotWater
+    buffer: Buffer | None = None
 
 
 class ErrorResponse(BaseModel):

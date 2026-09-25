@@ -1,0 +1,78 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN"
+"http://www.w3.org/TR/html4/loose.dtd">
+<html>
+  <head>
+  <meta http-equiv="content-type" content="text/html;charset=ISO-8859-1">
+  </meta>
+<meta http-equiv="refresh" content="10; URL=/v0.rsp?sessionid=SESSIONID">
+  <link rel="stylesheet" type="text/css" href="view.css">
+  <title>system survey</title>
+  <script type="text/javascript" src="v0.js"></script>
+  </head>
+  <body onload="hidebuttons();">
+<div id="vheaderpane" style="width:1180px;"><!-- start_vheaderpane -->
+<a href="http://www.aircon.panasonic.eu/GB_en/" target="_blank"><img id="reginlogo" src="hpm.png" alt=""></a>
+<div id="hnavbar">
+<span class="navlink_enabled"><a href="leave.rsp?sessionid=SESSIONID">Leave</a></span> 
+<span class="navlink_enabled"><a href="v0.rsp?sessionid=SESSIONID">Starting picture</a></span> 
+<span class="navlink_disabled">Logout</span> 
+<span class="navlink_enabled"><a href="/webfb.rsp?sessionid=SESSIONID">WEB-RC</a></span> 
+</div>
+<span style="position:absolute; top:0px; left:0px;z-index:2"><a href="resize.rsp?sessionid=SESSIONID&pdm=1"><img src="arrow-up.png" alt="up"></a></span>
+<div id="captionblock"><span id="captionone">HPM-800B7F</span>
+<br /><span id="captiontwo">system survey</span><br />
+</div>
+<span class="webgrservice"><span style="vertical-align:top;">DIAGRAM 57133 LDT. </span><a href="http://hpmtool.eu?locale=en_GB&cn=57133" target="_blank"><img src="configuration-small.png" alt="HPMtool" title="HPMtool"></a></span>
+</div><!-- end_vheaderpane -->
+
+<div id="vnavipane" style="width:179px; height:600px;"><!-- start vnavipane -->
+<p class="treecap">Diagram selection</p>
+<span style="position: relative; left:0em"><a href="v0.rsp?sessionid=SESSIONID"><img src="minivrw.png" alt="[ ]"></a><span class="selected"><a href="v0.rsp?sessionid=SESSIONID">system survey</a></span></span><br />
+<span style="position: relative; left:0em"><a href="v50000.rsp?sessionid=SESSIONID"><img src="minivrw.png" alt="[ ]"></a><a href="v50000.rsp?sessionid=SESSIONID">heat source</a></span><br />
+<span style="position: relative; left:1em"><a href="v21.rsp?sessionid=SESSIONID"><img src="minivrw.png" alt="[ ]"></a><a href="v21.rsp?sessionid=SESSIONID">heat pump 1</a></span><br />
+<span style="position: relative; left:0em"><a href="v107000.rsp?sessionid=SESSIONID"><img src="minivrw.png" alt="[ ]"></a><a href="v107000.rsp?sessionid=SESSIONID">domHotWater</a></span><br />
+<span style="position: relative; left:0em"><a href="v100100.rsp?sessionid=SESSIONID"><img src="minivrw.png" alt="[ ]"></a><a href="v100100.rsp?sessionid=SESSIONID">buffer tank</a></span><br />
+<span style="position: relative; left:0em"><a href="v30.rsp?sessionid=SESSIONID"><img src="minivrw.png" alt="[ ]"></a><a href="v30.rsp?sessionid=SESSIONID">heatC. 1</a></span><br />
+<span style="position: relative; left:0em"><a href="v3.rsp?sessionid=SESSIONID"><img src="minivrw.png" alt="[ ]"></a><a href="v3.rsp?sessionid=SESSIONID">heatC. 2</a></span><br />
+<span style="position:absolute; top:0px; left:0px;z-index:2"><a href="resize.rsp?sessionid=SESSIONID&pdm=2"><img src="arrow-left.png" alt="left"></a></span>
+</div><!-- end vnavipane -->
+
+ <div id="vmainpane" style="left:180px; width:1000px; height:600px; border-left-style: solid; border-left-width: 1px;border-left-color: black;"><!-- start_mainpane -->
+
+<div style="position:absolute; top:10px;left:405px;width:190px; text-align:center">
+oMod switch<br>
+<form id="MS0Form" method="POST" action="ms.rsp">
+  <select name="MS0" id="MS0Select" size="1" style="background-color:lime;" onchange="post('MS0');">
+    <option value="0"style="background-color:orange;" >off</option>
+    <option value="1"style="background-color:lime;"  selected>auto</option>
+    <option value="2"style="background-color:orange;" >summer</option>
+    <option value="3"style="background-color:orange;" >vacation</option>
+    <option value="4"style="background-color:orange;" >nominalOp</option>
+    <option value="5"style="background-color:orange;" >manual</option>
+  </select>
+  <input id="button0" type="submit" value="OK">
+<input type="hidden" name="sessionid" value="SESSIONID">
+</form>
+</div>
+<div style="position:absolute; top:60px;left:25px;width:190px; text-align:center">
+MS-HP1<br>
+<form id="MS1Form" method="POST" action="ms.rsp">
+  <select name="MS1" id="MS1Select" size="1" style="background-color:lime;" onchange="post('MS1');">
+    <option value="0"style="background-color:orange;" >off</option>
+    <option value="1"style="background-color:lime;"  selected>auto</option>
+    <option value="2"style="background-color:orange;" >force</option>
+  </select>
+  <input id="button1" type="submit" value="OK">
+<input type="hidden" name="sessionid" value="SESSIONID">
+</form>
+</div>
+<div style="top:127px; left:25px; width:950px; position:absolute; border-width:0px;">
+<div style="float:left;"><a href="v50000.rsp?sessionid=SESSIONID""><img src="grafik/s5xxxx.png" style="width:190px; height:345px;"></a></div>
+<div style="float:left;"><a href="v107000.rsp?sessionid=SESSIONID""><img src="grafik/sx7xxx_1.png" style="width:190px; height:345px;"></a></div>
+<div style="float:left;"><a href="v100100.rsp?sessionid=SESSIONID""><img src="grafik/sxx1xx_1.png" style="width:190px; height:345px;"></a></div>
+<div style="float:left;"><a href="v30.rsp?sessionid=SESSIONID""><img src="grafik/sxxx3x.png" style="width:190px; height:345px;"></a></div>
+<div style="float:left;"><a href="v3.rsp?sessionid=SESSIONID""><img src="grafik/sxxxx3.png" style="width:190px; height:345px;"></a></div>
+</div>
+</div><!-- end_vmainpane -->
+  </body>
+</html>

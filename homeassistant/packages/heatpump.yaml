@@ -17,7 +17,7 @@
 # ── Status & setpoint sensors ─────────────────────────────────────────────────
 
 rest:
-  # Status — 14 sensors from a single poll of /api/v1/status
+  # Status — every status sensor and binary sensor from a single poll of /api/v1/status
   - resource: !secret heatpump_status_url
     scan_interval: 30
     timeout: 30
@@ -138,6 +138,58 @@ rest:
         device_class: temperature
         state_class: measurement
 
+      # Heat-source demand, buffer and mixing valves. All best-effort in the API
+      # (null when absent or unparseable); guarded so null reads as unavailable,
+      # never 0. "Heatpump HC Setpoint" is what the HPM asks the unit for — it
+      # shows a 2 °C placeholder while there is no demand.
+      - name: "Heatpump HC Setpoint"
+        unique_id: heatpump_hp_hc_setpoint
+        availability: "{{ value_json is defined and value_json.heat_pump is defined and value_json.heat_pump is not none and value_json.heat_pump.hc_setpoint is defined and value_json.heat_pump.hc_setpoint is not none }}"
+        value_template: "{{ value_json.heat_pump.hc_setpoint if (value_json.heat_pump is defined and value_json.heat_pump is not none and value_json.heat_pump.hc_setpoint is defined) else none }}"
+        unit_of_measurement: "°C"
+        device_class: temperature
+        state_class: measurement
+
+      - name: "Heatpump Operating State"
+        unique_id: heatpump_hp_operating_state
+        availability: "{{ value_json is defined and value_json.heat_pump is defined and value_json.heat_pump is not none and value_json.heat_pump.operating_state is defined and value_json.heat_pump.operating_state is not none }}"
+        value_template: "{{ value_json.heat_pump.operating_state if (value_json.heat_pump is defined and value_json.heat_pump is not none and value_json.heat_pump.operating_state is defined) else none }}"
+
+      - name: "Heatpump Heat Demand"
+        unique_id: heatpump_hp_heat_demand
+        availability: "{{ value_json is defined and value_json.heat_pump is defined and value_json.heat_pump is not none and value_json.heat_pump.heat_demand is defined and value_json.heat_pump.heat_demand is not none }}"
+        value_template: "{{ value_json.heat_pump.heat_demand if (value_json.heat_pump is defined and value_json.heat_pump is not none and value_json.heat_pump.heat_demand is defined) else none }}"
+
+      - name: "Heatpump Buffer Temperature"
+        unique_id: heatpump_buffer_temp
+        availability: "{{ value_json is defined and value_json.buffer is defined and value_json.buffer is not none and value_json.buffer.temp is defined and value_json.buffer.temp is not none }}"
+        value_template: "{{ value_json.buffer.temp if (value_json.buffer is defined and value_json.buffer is not none and value_json.buffer.temp is defined) else none }}"
+        unit_of_measurement: "°C"
+        device_class: temperature
+        state_class: measurement
+
+      - name: "Heatpump Buffer Setpoint"
+        unique_id: heatpump_buffer_setpoint
+        availability: "{{ value_json is defined and value_json.buffer is defined and value_json.buffer is not none and value_json.buffer.setpoint is defined and value_json.buffer.setpoint is not none }}"
+        value_template: "{{ value_json.buffer.setpoint if (value_json.buffer is defined and value_json.buffer is not none and value_json.buffer.setpoint is defined) else none }}"
+        unit_of_measurement: "°C"
+        device_class: temperature
+        state_class: measurement
+
+      - name: "HC1 Valve Position"
+        unique_id: heatpump_hc1_valve_position
+        availability: "{{ value_json is defined and value_json.heating_circuit_1 is defined and value_json.heating_circuit_1 is not none and value_json.heating_circuit_1.valve_position is defined and value_json.heating_circuit_1.valve_position is not none }}"
+        value_template: "{{ value_json.heating_circuit_1.valve_position if (value_json.heating_circuit_1 is defined and value_json.heating_circuit_1 is not none and value_json.heating_circuit_1.valve_position is defined) else none }}"
+        unit_of_measurement: "%"
+        state_class: measurement
+
+      - name: "HC2 Valve Position"
+        unique_id: heatpump_hc2_valve_position
+        availability: "{{ value_json is defined and value_json.heating_circuit_2 is defined and value_json.heating_circuit_2 is not none and value_json.heating_circuit_2.valve_position is defined and value_json.heating_circuit_2.valve_position is not none }}"
+        value_template: "{{ value_json.heating_circuit_2.valve_position if (value_json.heating_circuit_2 is defined and value_json.heating_circuit_2 is not none and value_json.heating_circuit_2.valve_position is defined) else none }}"
+        unit_of_measurement: "%"
+        state_class: measurement
+
     # On/off states — binary_sensor so history/InfluxDB record clean 0/1 values
     # (a string "True"/"False" sensor is not usefully graphable).
     binary_sensor:
@@ -158,6 +210,11 @@ rest:
         availability: "{{ value_json is defined and 'heating_circuit_1' in value_json }}"
         value_template: "{{ 'ON' if value_json.heating_circuit_1.pump_on else 'OFF' }}"
         device_class: running
+
+      - name: "Heatpump Defrost"
+        unique_id: heatpump_hp_defrost
+        availability: "{{ value_json is defined and value_json.heat_pump is defined and value_json.heat_pump is not none and value_json.heat_pump.defrost is defined and value_json.heat_pump.defrost is not none }}"
+        value_template: "{{ 'ON' if value_json.heat_pump.defrost else 'OFF' }}"
 
   # HC1 setpoints — writable heating curve breakpoints + normal/standby
   #

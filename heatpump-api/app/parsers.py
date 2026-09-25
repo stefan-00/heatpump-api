@@ -1,6 +1,6 @@
 import re
 
-from .models import DomesticHotWater, HeatingCircuit, HeatingCircuit2, HeatPumpUnit
+from .models import Buffer, DomesticHotWater, HeatingCircuit, HeatingCircuit2, HeatPumpUnit
 
 
 def extract_param(html: str, param_id: str) -> str:
@@ -54,6 +54,40 @@ def _optional_param(html: str, param_id: str) -> str | None:
         return None
 
 
+def parse_text(text: str) -> str:
+    """Return the whole display text with whitespace collapsed.
+
+    For multi-word state strings ('no demand', 'Blocked / off'), where
+    parse_last_token would keep only the last word."""
+    collapsed = " ".join(text.split())
+    if not collapsed:
+        raise ValueError("Empty text value")
+    return collapsed
+
+
+def parse_on_off(text: str) -> bool:
+    """Strict variant of parse_bool: the last token must be 'on' or 'off'."""
+    tokens = text.split()
+    last = tokens[-1].lower() if tokens else ""
+    if last not in ("on", "off"):
+        raise ValueError(f"Not an on/off value: {text!r}")
+    return last == "on"
+
+
+def _lenient(html: str, param_id: str, parse):
+    """Parse a parameter, returning None when it is absent OR unparseable.
+
+    Used for fields added after the core status: unlike _optional_float, a
+    malformed value can never turn a working status into a 502."""
+    text = _optional_param(html, param_id)
+    if text is None:
+        return None
+    try:
+        return parse(text)
+    except ValueError:
+        return None
+
+
 def _optional_float(html: str, param_id: str) -> float | None:
     text = _optional_param(html, param_id)
     return parse_float(text) if text is not None else None
@@ -73,6 +107,10 @@ def parse_hp1(html: str) -> HeatPumpUnit:
         return_temp=parse_float(extract_param(html, "112")),
         frequency=int(parse_float(extract_param(html, "126"))),
         error_code=parse_last_token(extract_param(html, "125")),
+        hc_setpoint=_lenient(html, "109", parse_float),
+        operating_state=_lenient(html, "88", parse_text),
+        heat_demand=_lenient(html, "89", parse_text),
+        defrost=_lenient(html, "124", parse_on_off),
     )
 
 
@@ -89,6 +127,7 @@ def parse_hc1(html: str) -> HeatingCircuit:
         room_ot1=_optional_float(html, "17"),
         room_ot2=_optional_float(html, "169"),
         pump_on=parse_bool(extract_param(html, "15")),
+        valve_position=_lenient(html, "16", parse_float),
     )
 
 
@@ -107,6 +146,21 @@ def parse_hc2(html: str) -> HeatingCircuit2:
         room_ot1=_optional_float(html, "31"),
         room_ot2=_optional_float(html, "170"),
         pump_on=_optional_bool(html, "29"),
+        valve_position=_lenient(html, "30", parse_float),
+    )
+
+
+def parse_buffer(html: str) -> Buffer:
+    """Parse the buffer tank from v100100.rsp HTML.
+
+    temp (61) is shown without a unit ('42.5'); setpoint (59) is 'SP-zone1
+    42.0 °C'. Raises ValueError only when neither is present, so the caller can
+    treat a wholly unexpected page as 'no buffer data'."""
+    if _optional_param(html, "61") is None and _optional_param(html, "59") is None:
+        raise ValueError("Neither buffer parameter (61, 59) found in HTML")
+    return Buffer(
+        temp=_lenient(html, "61", parse_float),
+        setpoint=_lenient(html, "59", parse_float),
     )
 
 

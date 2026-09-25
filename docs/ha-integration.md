@@ -85,14 +85,20 @@ via **Settings → System → YAML configuration reloading**.
 
 ## What the package provides
 
-### Status sensors (14 entities)
+### Status sensors (26 entities)
 
 A single poll of `/api/v1/status` every 30 seconds populates:
 
 - Operating mode, outdoor temperature
-- Heat pump: on/off, heating, outlet temp, return temp, frequency, error code
-- HC1: flow setpoint, flow temp, room setpoint, pump on/off
+- Heat pump: on/off, heating, outlet temp, return temp, frequency, error code, defrost
+- Heat-source demand: `Heatpump HC Setpoint` (the flow temperature the HPM asks the
+  heat pump for; `2 °C` means no demand), operating state, heat demand
+- Buffer tank: temperature, zone-1 setpoint
+- HC1: flow setpoint, flow temp, room setpoint, pump on/off, mixing-valve position
+- HC2: flow setpoint, flow temp, room setpoint, outdoor (delayed) temp, mixing-valve position
 - DHW: setpoint, actual temperature
+
+The mixing-valve positions are the controllers' `Y-contr.` signals, in percent.
 
 > **Resilience to API errors:** if the API returns an error body (e.g. a `502` with
 > `{"detail": ...}` when the heatpump is briefly unreachable), an empty/non-JSON body, or

@@ -48,20 +48,24 @@ v0.rsp  ────────────────────────
 | 118 | Force mode active | `off` | bool | — |
 | 120 | Electric heater active | `off` | bool | — |
 | 121 | Booster active | `off` | bool | — |
-| 124 | Defrost active | `off` | bool | — |
+| 124 | Defrost active | `off` | bool | ✓ `heat_pump.defrost` |
 | 123 | Warning active | `off` | bool | — |
 | 128 | Electric heat energy | `9 kW` | int | — (configured capacity) |
 | 127 | Service mode | `off` | bool | — |
 | 87  | HP state | `Blocked / off` | str | — |
-| 88  | Operating state | `no demand` | str | — |
-| 89  | Heat demand | `no demand` | str | — |
-| 109 | HC setpoint (from HP) | `2 °C` | float | — (internal HP value) |
-| 110 | DHW setpoint (from HP) | `2 °C` | float | — (internal HP value) |
+| 88  | Operating state | `normal` | str | ✓ `heat_pump.operating_state` |
+| 89  | Heat demand | `no demand` / `dem. HC2` | str | ✓ `heat_pump.heat_demand` |
+| 109 | HC setpoint sent to the HP | `42 °C` | float | ✓ `heat_pump.hc_setpoint` |
+| 110 | DHW setpoint sent to the HP | `2 °C` | float | — |
+
+Ids 109/110 are what the HPM *asks the heat pump for*, not values the heat pump
+reports back. With no demand they show a `2 °C` placeholder; on 2026-09-25, during
+HC2 (pool) demand at 41 Hz, id 109 read `42 °C` while the outlet (111) read 37 °C.
 
 
 ## Heating circuit 1 (floor heating) — v30.rsp
 
-Main view. Also available as: v10 (with pump speed), v20 (without pump speed), v50 (minimal),
+Main view. Also available as: v10 (with Y-contr), v20 (without Y-contr), v50 (minimal),
 v90 (3-param: state/mode/timer only).
 
 | ID  | Label | Current | Type | API |
@@ -71,12 +75,16 @@ v90 (3-param: state/mode/timer only).
 | 13  | Flow temperature | `21.3 °C` | float | ✓ `hc1.flow_temp` |
 | 15  | Pump on | `on` | bool | ✓ `hc1.pump_on` |
 | 18  | Room setpoint (nominal) | `20.0 °C` | float | ✓ `hc1.room_setpoint` |
-| 16  | Pump speed | `100 %` | int | — (v10 only) |
+| 16  | Mixing valve `Y-contr.` (6.2.15) | `0 %` | float | ✓ `hc1.valve_position` |
 | 6   | Operating mode | `nom. oper. OT1` | str | — |
 | 7   | Operating state | `normal` | str | — |
 | 8   | Timer status | `timer-OT1 ----------` | str | — |
 | 17  | Room setpoint OT1 | `20.0 °C` | float | ✓ `hc1.room_ot1` |
 | 169 | Room setpoint OT2 | `20.0 °C` | float | ✓ `hc1.room_ot2` |
+
+Id 16 here and id 30 on v3.rsp were documented as pump speed until 2026-09-25;
+`vinfo.rsp` names both `Y-contr.` ("controller contrSign back", `%6.1f`) — the
+mixing-valve control signal. Neither circuit page carries a pump speed.
 
 
 ## Heating circuit 2 (pool heating) — v3.rsp
@@ -90,7 +98,7 @@ As of 2026-05-22, HC2 is in **OT2 mode** but pump is off because `delOutT` (20.5
 | 26  | Flow setpoint | `18.0 °C` | float | ✓ `hc2.flow_setpoint` |
 | 27  | Flow temperature | `17.1 °C` | float | ✓ `hc2.flow_temp` |
 | 29  | Pump on | `off` | bool | ✓ `hc2.pump_on` |
-| 30  | Pump speed | `0 %` | int | — |
+| 30  | Mixing valve `Y-contr.` (6.3.15) | `100 %` | float | ✓ `hc2.valve_position` |
 | 20  | Operating mode | `nom. oper. OT2` | str | — |
 | 21  | Operating state | `normal` | str | — |
 | 22  | Timer status | `timer-OT2 ----------` | str | — |
@@ -122,8 +130,8 @@ Also accessible as v100.rsp (alias, identical content).
 
 | ID  | Label | Current | Type | API |
 |-----|-------|---------|------|-----|
-| 61  | Buffer temperature | `34.3 °C` | float | — |
-| 59  | Zone 1 setpoint | `20.0 °C` | float | — |
+| 61  | Buffer temperature | `35.7` (no unit shown) | float | ✓ `buffer.temp` |
+| 59  | Zone 1 setpoint (`SP-zone1`) | `42.0 °C` | float | ✓ `buffer.setpoint` |
 | 56  | Operating mode | `nom. oper.` | str | — |
 | 57  | Operating state | `normal` | str | — |
 
@@ -143,16 +151,16 @@ Variant pages show subsets of the main view for the same subsystem.
 |------|-------|--------|-------|
 | v0 | system survey | 2 | MS0/MS1 write selectors |
 | v1 | heatC. 2 | 12 | HC2 full — same content as v3 |
-| v2 | heatC. 2 | 10 | HC2 without flow temp + pump speed |
+| v2 | heatC. 2 | 10 | HC2 without flow temp + Y-contr |
 | v3 | heatC. 2 | 12 | HC2 main view |
 | v5 | heatC. 2 | 9 | HC2 minimal |
-| v10 | heatC. 1 | 12 | HC1 full (includes pump speed) |
-| v20 | heatC. 1 | 11 | HC1 without pump speed |
+| v10 | heatC. 1 | 12 | HC1 full (includes Y-contr) |
+| v20 | heatC. 1 | 11 | HC1 without Y-contr |
 | v21 | hp1 | 20 | HP1 full view |
 | v22 | hp2 | 0 | HP2 — empty, not installed |
 | v23 | hp3 | 0 | HP3 — empty, not installed |
 | v30 | heatC. 1 | 12 | HC1 main view |
-| v50 | heatC. 1 | 10 | HC1 without pump speed + flow temp |
+| v50 | heatC. 1 | 10 | HC1 without Y-contr + flow temp |
 | v90 | heatC. 1 | 3 | HC1 minimal (state/mode/timer only) |
 | v100 | buffer tank | 5 | Alias for v100100 |
 | v3000 | domHotWater | 4 | DHW minimal (state/mode/timer/actual temp) |
