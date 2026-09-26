@@ -2,6 +2,13 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Related repos
+
+These personal projects overlap, and the couplings are not visible from inside any one of
+them. `stefan-00/projects` maps them: purpose, which repo is the authority for a given
+fact, and the cross-repo rules. Check it before changing something another repo also
+describes.
+
 ## Git workflow
 
 Solo project — commit and push directly to `main`. Do not create a feature branch or open a PR unless explicitly asked.
