@@ -128,9 +128,9 @@ def test_missing_new_values_leave_core_fields_intact(page):
 # --- timer period and active room setpoint --------------------------------
 #
 # The captures cover 'nom. oper. OT2' (HC1) and 'nom. oper. OT1' (HC2). Other
-# states are substituted into those pages: 'red. oper. SNOT' / 'timer-SNOT ----'
-# were read from HC2 during its 2025/26 winter standby (git history of
-# docs/hpm-ui-surface.md, 4f8a383); 'red. oper. NO' has never been observed and
+# states are substituted into those pages: 'red. oper. SNOT' /
+# 'timer-SNOT ----------' were read live from HC2 on 2026-10-05, during its
+# winter standby; 'red. oper. NO' has never been observed and
 # follows that shape on the manual's naming.
 
 @pytest.mark.parametrize(
@@ -168,9 +168,9 @@ def test_hc2_period_from_capture(page):
 
 def test_hc2_snot_has_period_but_no_view_page_setpoint(page):
     html = _replace_value(page("v3"), "20", "red. oper. SNOT")
-    html = _replace_value(html, "22", "timer-SNOT ----")
+    html = _replace_value(html, "22", "timer-SNOT ----------")
     hc2 = parse_hc2(html)
-    assert (hc2.operating_status, hc2.timer_status) == ("red. oper. SNOT", "timer-SNOT ----")
+    assert (hc2.operating_status, hc2.timer_status) == ("red. oper. SNOT", "timer-SNOT ----------")
     assert (hc2.period, hc2.active_room_setpoint) == ("SNOT", None)
 
 

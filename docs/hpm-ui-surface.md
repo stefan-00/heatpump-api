@@ -96,8 +96,8 @@ The API derives `period` from the operating mode's last token, accepted only if
 it is `OT1`–`OT4`, `NO` or `SNOT` (anything else is `null`), and resolves
 `active_room_setpoint` from the same page for OT1/OT2/NO. Observed strings:
 `nom. oper. OT1`, `nom. oper. OT2`, and on HC2 during its winter standby
-`red. oper. SNOT` / `timer-SNOT ----` (2025/26, see commit 4f8a383). An NO
-string has not been observed.
+`red. oper. SNOT` / `timer-SNOT ----------` (live on 2026-10-05; also in the
+2025/26 crawl, commit 4f8a383). An NO string has not been observed.
 
 Id 16 here and id 30 on v3.rsp were documented as pump speed until 2026-09-25;
 `vinfo.rsp` names both `Y-contr.` ("controller contrSign back", `%6.1f`) — the
