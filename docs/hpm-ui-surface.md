@@ -74,13 +74,30 @@ v90 (3-param: state/mode/timer only).
 | 12  | Flow setpoint | `20.0 °C` | float | ✓ `hc1.flow_setpoint` |
 | 13  | Flow temperature | `21.3 °C` | float | ✓ `hc1.flow_temp` |
 | 15  | Pump on | `on` | bool | ✓ `hc1.pump_on` |
-| 18  | Room setpoint (nominal) | `20.0 °C` | float | ✓ `hc1.room_setpoint` |
+| 18  | Room setpoint NO (non-occupation time) | `20.0 °C` | float | ✓ `hc1.room_setpoint` |
 | 16  | Mixing valve `Y-contr.` (6.2.15) | `0 %` | float | ✓ `hc1.valve_position` |
-| 6   | Operating mode | `nom. oper. OT1` | str | — |
+| 6   | Operating mode | `nom. oper. OT1` | str | ✓ `hc1.operating_status`, `hc1.period` |
 | 7   | Operating state | `normal` | str | — |
-| 8   | Timer status | `timer-OT1 ----------` | str | — |
+| 8   | Timer status | `timer-OT1 ----------` | str | ✓ `hc1.timer_status` |
 | 17  | Room setpoint OT1 | `20.0 °C` | float | ✓ `hc1.room_ot1` |
 | 169 | Room setpoint OT2 | `20.0 °C` | float | ✓ `hc1.room_ot2` |
+
+**Timer periods.** The manual (`import/HPM_HBInstIB_en.pdf` §3.3.4, §3.3.7,
+Table 1.4) names them: `OT1`–`OT4` are occupation times, `NO` the
+**non-occupation time** (the setpoint outside every OT, and the one the
+"holiday" switch position forces), `SNOT` the special non-occupation time
+(holiday dates in the annual program). `nom. oper.` in the operating mode means
+nominal operation, i.e. an OT is running; `red. oper.` is reduced operation.
+`roomNO` is therefore *not* a nominal or default setpoint. With HC1's week
+program (OT1 21:00–06:00, OT2 06:00–21:00) it never applies, and roomOT1/roomOT2
+are what is in force.
+
+The API derives `period` from the operating mode's last token, accepted only if
+it is `OT1`–`OT4`, `NO` or `SNOT` (anything else is `null`), and resolves
+`active_room_setpoint` from the same page for OT1/OT2/NO. Observed strings:
+`nom. oper. OT1`, `nom. oper. OT2`, and on HC2 during its winter standby
+`red. oper. SNOT` / `timer-SNOT ----` (2025/26, see commit 4f8a383). An NO
+string has not been observed.
 
 Id 16 here and id 30 on v3.rsp were documented as pump speed until 2026-09-25;
 `vinfo.rsp` names both `Y-contr.` ("controller contrSign back", `%6.1f`) — the
@@ -99,11 +116,11 @@ As of 2026-05-22, HC2 is in **OT2 mode** but pump is off because `delOutT` (20.5
 | 27  | Flow temperature | `17.1 °C` | float | ✓ `hc2.flow_temp` |
 | 29  | Pump on | `off` | bool | ✓ `hc2.pump_on` |
 | 30  | Mixing valve `Y-contr.` (6.3.15) | `100 %` | float | ✓ `hc2.valve_position` |
-| 20  | Operating mode | `nom. oper. OT2` | str | — |
+| 20  | Operating mode | `nom. oper. OT2` | str | ✓ `hc2.operating_status`, `hc2.period` |
 | 21  | Operating state | `normal` | str | — |
-| 22  | Timer status | `timer-OT2 ----------` | str | — |
+| 22  | Timer status | `timer-OT2 ----------` | str | ✓ `hc2.timer_status` |
 | 31  | Room setpoint OT1 | `45.0 °C` | float | ✓ `hc2.room_ot1` |
-| 32  | Room setpoint (nominal, roomNO) | `19.0 °C` | float | ✓ `hc2.room_setpoint` |
+| 32  | Room setpoint NO (non-occupation time) | `19.0 °C` | float | ✓ `hc2.room_setpoint` |
 | 170 | Room setpoint OT2 | `30.0 °C` | float | ✓ `hc2.room_ot2` |
 
 

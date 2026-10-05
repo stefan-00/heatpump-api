@@ -85,7 +85,7 @@ via **Settings → System → YAML configuration reloading**.
 
 ## What the package provides
 
-### Status sensors (26 entities)
+### Status sensors (28 entities, plus 2 template sensors)
 
 A single poll of `/api/v1/status` every 30 seconds populates:
 
@@ -94,8 +94,9 @@ A single poll of `/api/v1/status` every 30 seconds populates:
 - Heat-source demand: `Heatpump HC Setpoint` (the flow temperature the HPM asks the
   heat pump for; `2 °C` means no demand), operating state, heat demand
 - Buffer tank: temperature, zone-1 setpoint
-- HC1: flow setpoint, flow temp, room setpoint, pump on/off, mixing-valve position
-- HC2: flow setpoint, flow temp, room setpoint, outdoor (delayed) temp, mixing-valve position
+- HC1: flow setpoint, flow temp, room setpoint NO, pump on/off, mixing-valve position, operating period
+- HC2: flow setpoint, flow temp, room setpoint NO, outdoor (delayed) temp, mixing-valve position, operating period
+- HC1/HC2 active room setpoint: the setpoint for the period in force (template sensor; falls back to the `/setpoints` value for OT3/OT4/SNOT)
 - DHW: setpoint, actual temperature
 
 The mixing-valve positions are the controllers' `Y-contr.` signals, in percent.
@@ -218,5 +219,5 @@ template:
           action: rest_command.heatpump_set_hc1_roomot1
           data:
             value: "{{ value }}"
-      # HC1 Room OT2 ... HC2 Room Standby ...
+      # HC1 Room OT2 ... HC2 Room SNOT (holiday) ...
 ```

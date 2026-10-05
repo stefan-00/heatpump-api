@@ -22,11 +22,18 @@ class HeatPumpUnit(BaseModel):
 class HeatingCircuit(BaseModel):
     flow_setpoint: float
     flow_temp: float
-    room_setpoint: float  # nominal (roomNO)
+    room_setpoint: float  # non-occupation time (roomNO), not "nominal"
     room_ot1: float | None = None
     room_ot2: float | None = None
     pump_on: bool
     valve_position: float | None = None  # mixing valve Y-contr., %
+    # Timer period in force, best-effort. period is OT1..OT4, NO or SNOT, taken
+    # from operating_status; active_room_setpoint is that period's room setpoint
+    # when it is on the view page (OT1, OT2, NO), else None.
+    operating_status: str | None = None
+    timer_status: str | None = None
+    period: str | None = None
+    active_room_setpoint: float | None = None
 
 
 class HeatingCircuit2(BaseModel):
@@ -35,8 +42,8 @@ class HeatingCircuit2(BaseModel):
     flow_temp (27) and outdoor_temp (23, delOutT) are confirmed against the
     device. The remaining fields are parsed best-effort and resolve to None if
     the param is not present, so a missing/incorrect ID can never break the
-    confirmed fields. room_setpoint is the nominal setpoint (roomNO = 32, per
-    device verification)."""
+    confirmed fields. room_setpoint is the non-occupation time setpoint
+    (roomNO, id 32)."""
 
     flow_temp: float
     outdoor_temp: float
@@ -46,6 +53,10 @@ class HeatingCircuit2(BaseModel):
     room_ot2: float | None = None
     pump_on: bool | None = None
     valve_position: float | None = None  # mixing valve Y-contr., %
+    operating_status: str | None = None
+    timer_status: str | None = None
+    period: str | None = None
+    active_room_setpoint: float | None = None
 
 
 class DomesticHotWater(BaseModel):

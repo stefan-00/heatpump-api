@@ -18,6 +18,7 @@ from app.parsers import (
     parse_hc1,
     parse_hc2,
     parse_hp1,
+    parse_period,
     parse_text,
 )
 
@@ -122,3 +123,80 @@ def test_missing_new_values_leave_core_fields_intact(page):
     hc1 = parse_hc1(_drop_param(page("v30"), "16"))
     assert hc1.valve_position is None
     assert hc1.flow_temp == 20.2
+
+
+# --- timer period and active room setpoint --------------------------------
+#
+# The captures cover 'nom. oper. OT2' (HC1) and 'nom. oper. OT1' (HC2). Other
+# states are substituted into those pages: 'red. oper. SNOT' / 'timer-SNOT ----'
+# were read from HC2 during its 2025/26 winter standby (git history of
+# docs/hpm-ui-surface.md, 4f8a383); 'red. oper. NO' has never been observed and
+# follows that shape on the manual's naming.
+
+@pytest.mark.parametrize(
+    "text, expected",
+    [
+        ("nom. oper. OT1     ", "OT1"),
+        ("nom. oper. OT2", "OT2"),
+        ("red. oper. SNOT", "SNOT"),
+        ("red. oper. NO", "NO"),
+        ("frost prot.", None),
+        ("off", None),
+        ("nom. oper. OT1 extra", None),
+        ("nom. oper. ot1", None),
+        ("", None),
+        (None, None),
+    ],
+)
+def test_parse_period(text, expected):
+    assert parse_period(text) == expected
+
+
+def test_hc1_period_from_capture(page):
+    hc1 = parse_hc1(page("v30"))
+    assert hc1.operating_status == "nom. oper. OT2"
+    assert hc1.timer_status == "timer-OT2 ----------"
+    assert (hc1.period, hc1.active_room_setpoint) == ("OT2", 18.0)
+
+
+def test_hc2_period_from_capture(page):
+    hc2 = parse_hc2(page("v3"))
+    assert hc2.operating_status == "nom. oper. OT1"
+    assert hc2.timer_status == "timer-OT1 ------B---"
+    assert (hc2.period, hc2.active_room_setpoint) == ("OT1", 27.0)
+
+
+def test_hc2_snot_has_period_but_no_view_page_setpoint(page):
+    html = _replace_value(page("v3"), "20", "red. oper. SNOT")
+    html = _replace_value(html, "22", "timer-SNOT ----")
+    hc2 = parse_hc2(html)
+    assert (hc2.operating_status, hc2.timer_status) == ("red. oper. SNOT", "timer-SNOT ----")
+    assert (hc2.period, hc2.active_room_setpoint) == ("SNOT", None)
+
+
+def test_hc1_no_resolves_to_room_setpoint(page):
+    hc1 = parse_hc1(_replace_value(page("v30"), "6", "red. oper. NO"))
+    assert (hc1.period, hc1.active_room_setpoint) == ("NO", 20.0)
+
+
+def test_unknown_operating_status_keeps_raw_string(page):
+    hc1 = parse_hc1(_replace_value(page("v30"), "6", "frost prot."))
+    assert hc1.operating_status == "frost prot."
+    assert (hc1.period, hc1.active_room_setpoint) == (None, None)
+    assert hc1.flow_temp == 20.2
+
+
+def test_period_with_its_setpoint_missing(page):
+    hc1 = parse_hc1(_drop_param(page("v30"), "169"))
+    assert (hc1.period, hc1.active_room_setpoint) == ("OT2", None)
+
+
+def test_missing_period_params_leave_other_fields_intact(page):
+    hc1 = parse_hc1(_drop_param(_drop_param(page("v30"), "6"), "8"))
+    assert (hc1.operating_status, hc1.timer_status, hc1.period, hc1.active_room_setpoint) == (None,) * 4
+    assert (hc1.flow_setpoint, hc1.flow_temp, hc1.room_setpoint) == (20.5, 20.2, 20.0)
+    assert (hc1.room_ot1, hc1.room_ot2, hc1.pump_on, hc1.valve_position) == (18.0, 18.0, True, 0.0)
+
+    hc2 = parse_hc2(_drop_param(_drop_param(page("v3"), "20"), "22"))
+    assert (hc2.operating_status, hc2.timer_status, hc2.period, hc2.active_room_setpoint) == (None,) * 4
+    assert (hc2.flow_temp, hc2.room_setpoint, hc2.room_ot1, hc2.valve_position) == (23.2, 10.0, 27.0, 100.0)

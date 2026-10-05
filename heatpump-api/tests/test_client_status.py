@@ -15,9 +15,11 @@ class FixtureSession:
     def __init__(self, overrides=None, fail=None):
         self._overrides = overrides or {}
         self._fail = fail
+        self.requested = []
 
     async def request(self, method, url, **kwargs):
         name = url.rsplit("/", 1)[-1].removesuffix(".rsp")
+        self.requested.append((method, name))
         if name == self._fail:
             raise httpx.ConnectError("connection refused")
         body = self._overrides.get(name)
@@ -51,3 +53,17 @@ def test_unreachable_buffer_page_is_502():
     with pytest.raises(HTTPException) as exc:
         _status(FixtureSession(fail="v100100"))
     assert exc.value.status_code == 502
+
+
+def test_status_includes_period_without_extra_device_traffic():
+    session = FixtureSession()
+    status = _status(session).model_dump()
+    hc1, hc2 = status["heating_circuit_1"], status["heating_circuit_2"]
+    assert (hc1["period"], hc1["active_room_setpoint"]) == ("OT2", 18.0)
+    assert hc1["operating_status"] == "nom. oper. OT2"
+    assert (hc2["period"], hc2["active_room_setpoint"]) == ("OT1", 27.0)
+    assert hc2["timer_status"] == "timer-OT1 ------B---"
+    # The same six view pages as before, and no WEB-RC navigation or writes.
+    assert sorted(session.requested) == sorted(
+        ("GET", page) for page in ("v21", "v30", "v3", "v107000", "v0", "v100100")
+    )

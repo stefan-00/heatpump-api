@@ -79,7 +79,7 @@ rest:
         device_class: temperature
         state_class: measurement
 
-      - name: "HC1 Room Setpoint"
+      - name: "HC1 Room Setpoint NO"
         unique_id: heatpump_hc1_room_setpoint
         availability: "{{ value_json is defined and 'heating_circuit_1' in value_json }}"
         value_template: "{{ value_json.heating_circuit_1.room_setpoint if 'heating_circuit_1' in value_json else none }}"
@@ -106,7 +106,7 @@ rest:
         device_class: temperature
         state_class: measurement
 
-      - name: "HC2 Room Setpoint"
+      - name: "HC2 Room Setpoint NO"
         unique_id: heatpump_hc2_room_setpoint
         availability: "{{ value_json is defined and value_json.heating_circuit_2 is defined and value_json.heating_circuit_2 is not none and value_json.heating_circuit_2.room_setpoint is not none }}"
         value_template: "{{ value_json.heating_circuit_2.room_setpoint if (value_json.heating_circuit_2 is defined and value_json.heating_circuit_2 is not none) else none }}"
@@ -190,6 +190,31 @@ rest:
         unit_of_measurement: "%"
         state_class: measurement
 
+      # Timer period in force per circuit: OT1..OT4 (occupation times), NO
+      # (non-occupation time) or SNOT (special non-occupation time, holiday);
+      # unknown when the device shows a state the API does not recognise. The
+      # raw device strings and the API's resolved setpoint ride along as
+      # attributes; "HCx Active Room Setpoint" below reads them.
+      - name: "HC1 Operating Period"
+        unique_id: heatpump_hc1_operating_period
+        availability: "{{ value_json is defined and value_json.heating_circuit_1 is defined and value_json.heating_circuit_1 is not none }}"
+        value_template: "{{ value_json.heating_circuit_1.period if (value_json.heating_circuit_1 is defined and value_json.heating_circuit_1 is not none and value_json.heating_circuit_1.period is defined) else none }}"
+        json_attributes_path: "$.heating_circuit_1"
+        json_attributes:
+          - operating_status
+          - timer_status
+          - active_room_setpoint
+
+      - name: "HC2 Operating Period"
+        unique_id: heatpump_hc2_operating_period
+        availability: "{{ value_json is defined and value_json.heating_circuit_2 is defined and value_json.heating_circuit_2 is not none }}"
+        value_template: "{{ value_json.heating_circuit_2.period if (value_json.heating_circuit_2 is defined and value_json.heating_circuit_2 is not none and value_json.heating_circuit_2.period is defined) else none }}"
+        json_attributes_path: "$.heating_circuit_2"
+        json_attributes:
+          - operating_status
+          - timer_status
+          - active_room_setpoint
+
     # On/off states — binary_sensor so history/InfluxDB record clean 0/1 values
     # (a string "True"/"False" sensor is not usefully graphable).
     binary_sensor:
@@ -216,9 +241,10 @@ rest:
         availability: "{{ value_json is defined and value_json.heat_pump is defined and value_json.heat_pump is not none and value_json.heat_pump.defrost is defined and value_json.heat_pump.defrost is not none }}"
         value_template: "{{ 'ON' if value_json.heat_pump.defrost else 'OFF' }}"
 
-  # HC1 setpoints — writable heating curve breakpoints + normal/standby
+  # HC1 setpoints — room setpoints per timer period: occupation times OT1–OT4,
+  # non-occupation time (NO) and special non-occupation time (SNOT, holiday).
   #
-  # roomOT1–roomOT4 are optional breakpoints; the availability template suppresses
+  # roomOT1–roomOT4 may be unconfigured; the availability template suppresses
   # "state is non-numeric" log errors when a breakpoint is not configured (API returns null).
   - resource: !secret heatpump_hc1_sp_url
     scan_interval: 60
@@ -474,6 +500,42 @@ rest_command:
 # ── Template number entities (writable sliders) ───────────────────────────────
 
 template:
+  - sensor:
+      # Room setpoint in force: the API's value when the period's setpoint is
+      # on the status page (OT1, OT2, NO), else the /setpoints sensor for the
+      # period (OT3, OT4, SNOT). Unavailable when the period is unknown.
+      - name: "HC1 Active Room Setpoint"
+        unique_id: heatpump_hc1_active_room_setpoint
+        unit_of_measurement: "°C"
+        device_class: temperature
+        state_class: measurement
+        availability: >-
+          {% set p = states('sensor.hc1_operating_period') %}
+          {{ has_value('sensor.hc1_operating_period')
+             and (state_attr('sensor.hc1_operating_period', 'active_room_setpoint') is number
+                  or (p in ['OT1', 'OT2', 'OT3', 'OT4', 'NO', 'SNOT']
+                      and has_value('sensor.hc1_setpoint_room' ~ p | lower))) }}
+        state: >-
+          {% set v = state_attr('sensor.hc1_operating_period', 'active_room_setpoint') %}
+          {% if v is number %}{{ v }}
+          {%- else %}{{ states('sensor.hc1_setpoint_room' ~ states('sensor.hc1_operating_period') | lower) }}{% endif %}
+
+      - name: "HC2 Active Room Setpoint"
+        unique_id: heatpump_hc2_active_room_setpoint
+        unit_of_measurement: "°C"
+        device_class: temperature
+        state_class: measurement
+        availability: >-
+          {% set p = states('sensor.hc2_operating_period') %}
+          {{ has_value('sensor.hc2_operating_period')
+             and (state_attr('sensor.hc2_operating_period', 'active_room_setpoint') is number
+                  or (p in ['OT1', 'OT2', 'OT3', 'OT4', 'NO', 'SNOT']
+                      and has_value('sensor.hc2_setpoint_room' ~ p | lower))) }}
+        state: >-
+          {% set v = state_attr('sensor.hc2_operating_period', 'active_room_setpoint') %}
+          {% if v is number %}{{ v }}
+          {%- else %}{{ states('sensor.hc2_setpoint_room' ~ states('sensor.hc2_operating_period') | lower) }}{% endif %}
+
   - number:
       # ── HC1 ──────────────────────────────────────────────────────────────
       - name: "HC1 Room OT1"
@@ -528,7 +590,7 @@ template:
           data:
             value: "{{ value }}"
 
-      - name: "HC1 Room Normal"
+      - name: "HC1 Room NO (non-occupied)"
         unique_id: heatpump_hc1_num_roomno
         availability: "{{ has_value('sensor.hc1_setpoint_roomno') }}"
         state: "{{ states('sensor.hc1_setpoint_roomno') }}"
@@ -541,7 +603,7 @@ template:
           data:
             value: "{{ value }}"
 
-      - name: "HC1 Room Standby"
+      - name: "HC1 Room SNOT (holiday)"
         unique_id: heatpump_hc1_num_roomsnot
         availability: "{{ has_value('sensor.hc1_setpoint_roomsnot') }}"
         state: "{{ states('sensor.hc1_setpoint_roomsnot') }}"
@@ -607,7 +669,7 @@ template:
           data:
             value: "{{ value }}"
 
-      - name: "HC2 Room Normal"
+      - name: "HC2 Room NO (non-occupied)"
         unique_id: heatpump_hc2_num_roomno
         availability: "{{ has_value('sensor.hc2_setpoint_roomno') }}"
         state: "{{ states('sensor.hc2_setpoint_roomno') }}"
@@ -620,7 +682,7 @@ template:
           data:
             value: "{{ value }}"
 
-      - name: "HC2 Room Standby"
+      - name: "HC2 Room SNOT (holiday)"
         unique_id: heatpump_hc2_num_roomsnot
         availability: "{{ has_value('sensor.hc2_setpoint_roomsnot') }}"
         state: "{{ states('sensor.hc2_setpoint_roomsnot') }}"
@@ -792,7 +854,7 @@ alert:
       {% set floor = states('sensor.hc2_flow_limit_min') %}
       {% for f, label in [('roomot1', 'OT1'), ('roomot2', 'OT2'),
                           ('roomot3', 'OT3'), ('roomot4', 'OT4'),
-                          ('roomno', 'Normal')] %}
+                          ('roomno', 'NO')] %}
       {%- set v = states('sensor.hc1_setpoint_' ~ f) | float(-999) %}
       {%- if v > -900 and (v > 25 or v < 5) %}
       HC1 room {{ label }} = {{ v }} °C{% if v < 5 %} (too low — this turns

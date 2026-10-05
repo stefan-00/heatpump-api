@@ -114,20 +114,71 @@ def parse_hp1(html: str) -> HeatPumpUnit:
     )
 
 
+# Timer periods, as the manual names them (HPM_HBInstIB_en.pdf §3.3.4, §3.3.7,
+# Table 1.4): OT1..OT4 are occupation times, NO the non-occupation time and SNOT
+# the special non-occupation time (holiday). Observed operating-status strings:
+# 'nom. oper. OT1', 'nom. oper. OT2' and, for HC2 in winter standby,
+# 'red. oper. SNOT'. 'NO' has not been seen on this device (every timer covers
+# the whole day with OT1 + OT2) and is accepted on the manual's naming alone.
+_PERIODS = frozenset({"OT1", "OT2", "OT3", "OT4", "NO", "SNOT"})
+
+
+def parse_period(text: str | None) -> str | None:
+    """Return the period token from an operating-status string, or None.
+
+    Only the last token is considered, and only an exact member of _PERIODS is
+    accepted; the prefix ('nom. oper.', 'red. oper.') is not checked. Anything
+    else — an off or frost-protection state, a trailing word — gives None
+    rather than a guess."""
+    if text is None:
+        return None
+    token = parse_last_token(text)
+    return token if token in _PERIODS else None
+
+
+def _circuit_period(
+    html: str,
+    status_id: str,
+    timer_id: str,
+    setpoints: dict[str, float | None],
+) -> dict:
+    """The operating/timer strings, the period, and the period's room setpoint.
+
+    `setpoints` maps the periods whose setpoint is on the view page to that
+    value; any other period resolves to None (OT3, OT4 and SNOT are only on
+    the WEB-RC setpoints page, which the status poll does not navigate to)."""
+    operating_status = _lenient(html, status_id, parse_text)
+    period = parse_period(operating_status)
+    return {
+        "operating_status": operating_status,
+        "timer_status": _lenient(html, timer_id, parse_text),
+        "period": period,
+        "active_room_setpoint": setpoints.get(period) if period else None,
+    }
+
+
 def parse_hc1(html: str) -> HeatingCircuit:
     """Parse heating circuit 1 status from v30.rsp HTML.
 
-    room_setpoint (18) is the nominal setpoint; room_ot1 (17) / room_ot2 (169)
-    are the weather-curve breakpoints, parsed best-effort.
+    room_setpoint (18) is the non-occupation time setpoint (roomNO); room_ot1
+    (17) / room_ot2 (169) are the occupation time 1/2 setpoints, parsed
+    best-effort. The period fields come from operating status (6) and timer
+    status (8).
     """
+    room_setpoint = parse_float(extract_param(html, "18"))
+    room_ot1 = _optional_float(html, "17")
+    room_ot2 = _optional_float(html, "169")
     return HeatingCircuit(
         flow_setpoint=parse_float(extract_param(html, "12")),
         flow_temp=parse_float(extract_param(html, "13")),
-        room_setpoint=parse_float(extract_param(html, "18")),
-        room_ot1=_optional_float(html, "17"),
-        room_ot2=_optional_float(html, "169"),
+        room_setpoint=room_setpoint,
+        room_ot1=room_ot1,
+        room_ot2=room_ot2,
         pump_on=parse_bool(extract_param(html, "15")),
         valve_position=_lenient(html, "16", parse_float),
+        **_circuit_period(
+            html, "6", "8", {"OT1": room_ot1, "OT2": room_ot2, "NO": room_setpoint}
+        ),
     )
 
 
@@ -135,18 +186,26 @@ def parse_hc2(html: str) -> HeatingCircuit2:
     """Parse heating circuit 2 status from v3.rsp HTML.
 
     flow_temp (27) and outdoor_temp (23, delOutT) are confirmed. The rest are
-    best-effort (None when absent): flow_setpoint (26), room_setpoint nominal
-    (32, roomNO), room_ot1 (31), room_ot2 (170), pump_on (29).
+    best-effort (None when absent): flow_setpoint (26), room_setpoint
+    (32, roomNO, the non-occupation time setpoint), room_ot1 (31), room_ot2
+    (170), pump_on (29), and the period fields from operating status (20) and
+    timer status (22).
     """
+    room_setpoint = _optional_float(html, "32")
+    room_ot1 = _optional_float(html, "31")
+    room_ot2 = _optional_float(html, "170")
     return HeatingCircuit2(
         flow_temp=parse_float(extract_param(html, "27")),
         outdoor_temp=parse_float(extract_param(html, "23")),
         flow_setpoint=_optional_float(html, "26"),
-        room_setpoint=_optional_float(html, "32"),
-        room_ot1=_optional_float(html, "31"),
-        room_ot2=_optional_float(html, "170"),
+        room_setpoint=room_setpoint,
+        room_ot1=room_ot1,
+        room_ot2=room_ot2,
         pump_on=_optional_bool(html, "29"),
         valve_position=_lenient(html, "30", parse_float),
+        **_circuit_period(
+            html, "20", "22", {"OT1": room_ot1, "OT2": room_ot2, "NO": room_setpoint}
+        ),
     )
 
 
