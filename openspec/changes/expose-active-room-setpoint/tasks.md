@@ -28,4 +28,4 @@
 
 - [x] 5.1 Ask for approval, then update the add-on on the live instance and verify `GET /api/v1/status` returns `period`, `active_room_setpoint` and the raw strings for both circuits
 - [x] 5.2 Ask for approval, then copy the package to `/config/packages/heatpump.yaml`, check config, reload; verify `sensor.hc1_active_room_setpoint` shows 18.0 and `sensor.hc1_room_setpoint` kept its entity_id
-- [ ] 5.3 Hand back to ha-config: once the new sensor has data in InfluxDB, swap the Indoor Temperatures dashboard's dashed line to `hc1_active_room_setpoint` and update `ha-config/GRAFANA.md`
+- [x] 5.3 Hand back to ha-config: once the new sensor has data in InfluxDB, swap the Indoor Temperatures dashboard's dashed line to `hc1_active_room_setpoint` and update `ha-config/GRAFANA.md`
