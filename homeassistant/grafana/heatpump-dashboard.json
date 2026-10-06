@@ -130,6 +130,102 @@
               {
                 "id": "custom.fillOpacity",
                 "value": 0
+              },
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "green",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "hc1_active_room_setpoint"
+            },
+            "properties": [
+              {
+                "id": "custom.lineStyle",
+                "value": {
+                  "dash": [
+                    10,
+                    10
+                  ],
+                  "fill": "dash"
+                }
+              },
+              {
+                "id": "custom.fillOpacity",
+                "value": 0
+              },
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "purple",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "hc1_flow_temperature"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "semi-dark-yellow",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "heatpump_outdoor_temperature"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "blue",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "heatpump_outlet_temperature"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "orange",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "heatpump_return_temperature"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "red",
+                  "mode": "fixed"
+                }
               }
             ]
           }
@@ -171,6 +267,17 @@
           "query": "SELECT mean(\"value\") FROM \"°C\" WHERE (\"entity_id\" =~ /^(heatpump_outdoor_temperature|heatpump_outlet_temperature|heatpump_return_temperature|hc1_flow_temperature|hc1_flow_setpoint)$/) AND $timeFilter GROUP BY time($__interval), \"entity_id\" fill(previous)",
           "rawQuery": true,
           "refId": "A",
+          "resultFormat": "time_series"
+        },
+        {
+          "alias": "$tag_entity_id",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${DS_INFLUXDB}"
+          },
+          "query": "SELECT last(\"value\") FROM \"°C\" WHERE \"entity_id\" = 'hc1_active_room_setpoint' AND time >= ${__from}ms - 90d AND time <= ${__to}ms GROUP BY time(15m), \"entity_id\" fill(previous) tz('Europe/Stockholm')",
+          "rawQuery": true,
+          "refId": "B",
           "resultFormat": "time_series"
         }
       ],
@@ -465,7 +572,38 @@
           },
           "unit": "celsius"
         },
-        "overrides": []
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "dhw_actual_temperature"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "green",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "dhw_setpoint"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "semi-dark-yellow",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          }
+        ]
       },
       "gridPos": {
         "h": 8,
@@ -499,9 +637,20 @@
             "type": "influxdb",
             "uid": "${DS_INFLUXDB}"
           },
-          "query": "SELECT mean(\"value\") FROM \"°C\" WHERE (\"entity_id\" =~ /^(dhw_actual_temperature|dhw_setpoint)$/) AND $timeFilter GROUP BY time($__interval), \"entity_id\" fill(previous)",
+          "query": "SELECT mean(\"value\") FROM \"°C\" WHERE (\"entity_id\" =~ /^(dhw_actual_temperature)$/) AND $timeFilter GROUP BY time($__interval), \"entity_id\" fill(previous)",
           "rawQuery": true,
           "refId": "A",
+          "resultFormat": "time_series"
+        },
+        {
+          "alias": "$tag_entity_id",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${DS_INFLUXDB}"
+          },
+          "query": "SELECT last(\"value\") FROM \"°C\" WHERE \"entity_id\" = 'dhw_setpoint' AND time >= ${__from}ms - 90d AND time <= ${__to}ms GROUP BY time(15m), \"entity_id\" fill(previous) tz('Europe/Stockholm')",
+          "rawQuery": true,
+          "refId": "B",
           "resultFormat": "time_series"
         }
       ],
@@ -568,7 +717,83 @@
           },
           "unit": "celsius"
         },
-        "overrides": []
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "hc2_flow_temperature"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "green",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "hc2_outdoor_temperature"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "semi-dark-yellow",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "hc2_setpoint_roomot2"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "blue",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "heatpump_outlet_temperature"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "orange",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "heatpump_return_temperature"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "red",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          }
+        ]
       },
       "gridPos": {
         "h": 9,
@@ -603,9 +828,20 @@
             "type": "influxdb",
             "uid": "${DS_INFLUXDB}"
           },
-          "query": "SELECT mean(\"value\") FROM \"°C\" WHERE (\"entity_id\" =~ /^(hc2_setpoint_roomot2|hc2_flow_temperature|hc2_outdoor_temperature|heatpump_outlet_temperature|heatpump_return_temperature)$/) AND $timeFilter GROUP BY time($__interval), \"entity_id\" fill(previous)",
+          "query": "SELECT mean(\"value\") FROM \"°C\" WHERE (\"entity_id\" =~ /^(hc2_flow_temperature|hc2_outdoor_temperature|heatpump_outlet_temperature|heatpump_return_temperature)$/) AND $timeFilter GROUP BY time($__interval), \"entity_id\" fill(previous)",
           "rawQuery": true,
           "refId": "A",
+          "resultFormat": "time_series"
+        },
+        {
+          "alias": "$tag_entity_id",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${DS_INFLUXDB}"
+          },
+          "query": "SELECT last(\"value\") FROM \"°C\" WHERE \"entity_id\" = 'hc2_setpoint_roomot2' AND time >= ${__from}ms - 90d AND time <= ${__to}ms GROUP BY time(15m), \"entity_id\" fill(previous) tz('Europe/Stockholm')",
+          "rawQuery": true,
+          "refId": "B",
           "resultFormat": "time_series"
         }
       ],
@@ -672,6 +908,111 @@
                 "value": 1
               }
             ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "hc2_flow_setpoint"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "green",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "heatpump_buffer_setpoint"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "semi-dark-yellow",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "heatpump_buffer_temperature"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "blue",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "heatpump_hc_setpoint"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "orange",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "heatpump_outlet_temperature"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "red",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "valve hc1_valve_position"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "purple",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "valve hc2_valve_position"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "dark-green",
+                  "mode": "fixed"
+                }
+              }
+            ]
           }
         ]
       },
@@ -706,7 +1047,7 @@
             "type": "influxdb",
             "uid": "${DS_INFLUXDB}"
           },
-          "query": "SELECT last(\"value\") FROM \"°C\" WHERE (\"entity_id\" =~ /^(heatpump_hc_setpoint|heatpump_outlet_temperature|hc2_flow_setpoint|heatpump_buffer_temperature|heatpump_buffer_setpoint)$/) AND $timeFilter GROUP BY time($__interval), \"entity_id\" fill(previous)",
+          "query": "SELECT last(\"value\") FROM \"°C\" WHERE (\"entity_id\" =~ /^(heatpump_hc_setpoint|heatpump_outlet_temperature|hc2_flow_setpoint|heatpump_buffer_temperature)$/) AND $timeFilter GROUP BY time($__interval), \"entity_id\" fill(previous)",
           "rawQuery": true,
           "refId": "A",
           "resultFormat": "time_series"
@@ -720,6 +1061,17 @@
           "query": "SELECT last(\"value\") FROM \"%\" WHERE (\"entity_id\" =~ /^hc[12]_valve_position$/) AND $timeFilter GROUP BY time($__interval), \"entity_id\" fill(previous)",
           "rawQuery": true,
           "refId": "B",
+          "resultFormat": "time_series"
+        },
+        {
+          "alias": "$tag_entity_id",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${DS_INFLUXDB}"
+          },
+          "query": "SELECT last(\"value\") FROM \"°C\" WHERE \"entity_id\" = 'heatpump_buffer_setpoint' AND time >= ${__from}ms - 90d AND time <= ${__to}ms GROUP BY time(15m), \"entity_id\" fill(previous) tz('Europe/Stockholm')",
+          "rawQuery": true,
+          "refId": "C",
           "resultFormat": "time_series"
         }
       ],
