@@ -9,8 +9,42 @@ Source: `import/monobloc-service-manual.pdf` — Operation & Control section (pp
 - 3-way valve directs HP output to the heating circuit (not tank).
 - Compressor runs to meet flow temperature setpoint.
 - Compressor shuts OFF when `(water outlet temp − setpoint) > 2 °C` for 3 minutes continuously.
-- Compressor restarts when outlet drops back below setpoint.
+- Compressor restarts only after a 3-minute wait **and** once the water outlet temperature
+  has dropped more than 3 °C below the water *inlet* temperature recorded at the moment
+  it shut off (§12.1.2.1). The restart point is relative to the inlet at thermo-off, not
+  to the setpoint.
 - Water pump runs continuously while heating mode is active.
+
+### How this interacts with the HPM buffer control
+
+The HPM passes the Aquarea the buffer setpoint (`SP-zone1`, in HA `Heatpump HC Setpoint`)
+with no margin on top. But charging the buffer *to* that setpoint needs outlet water
+*above* it — a charge run typically sends 26–27 °C against a 24 °C setpoint. So any charge
+run longer than about 3 minutes trips the Aquarea's own +2 K thermo-off above while the
+HPM is still demanding heat. The compressor then waits for its water to fall ~3 K, which
+can take hours, while the buffer sags 4–5 K below setpoint. Status and error code stay
+normal throughout.
+
+The signature in the data: `Heatpump On` = on, `Heatpump HC Setpoint` = the buffer
+setpoint, frequency 0, and each stall ending when outlet ≈ (inlet at stop − 3).
+Observed 2026-10-06 → 10-09, after HC1's roomOT1/roomOT2 went 18 → 20 °C: runs lengthened
+from ~2 min to 8–12 min and stalls of 1.5–13 h took up about half the time. Before that,
+2-minute runs ended (HPM demand off at buffer ≥ setpoint) before the 3-minute timer could
+expire, so this never showed.
+
+A fix needs a margin between the setpoint sent to the Aquarea and the buffer setpoint.
+Candidate HPM parameters, neither confirmed — the manuals do not match this firmware's
+labels:
+
+- `heatp.1 → function → boost → boost.hCu` (live 0.0 °C). Not in either manual; the
+  documented heat-pump boost (2.2.x.3.3) is a set of percentages per consumer, while this
+  firmware shows `boost DHW1` plus this absolute °C value.
+- `buffer tank → setpoints → boostZ1` (live 0.0). Part 2 §4.2 calls it "boost demand
+  buffer zone 1", range 1.0–25.0, default 5.0; part 1's menu tree says "boost until
+  switch-off limit". The live value is below the documented minimum.
+
+Change one at a time and watch whether `Heatpump HC Setpoint` moves away from
+`Heatpump Buffer Setpoint`; if it does not, revert.
 
 ---
 
