@@ -17,34 +17,35 @@ Source: `import/monobloc-service-manual.pdf` — Operation & Control section (pp
 
 ### How this interacts with the HPM buffer control
 
-The HPM passes the Aquarea the buffer setpoint (`SP-zone1`, in HA `Heatpump HC Setpoint`)
-with no margin on top. But charging the buffer *to* that setpoint needs outlet water
-*above* it — a charge run typically sends 26–27 °C against a 24 °C setpoint. So any charge
-run longer than about 3 minutes trips the Aquarea's own +2 K thermo-off above while the
-HPM is still demanding heat. The compressor then waits for its water to fall ~3 K, which
-can take hours, while the buffer sags 4–5 K below setpoint. Status and error code stay
-normal throughout.
+The HPM sends the Aquarea the buffer setpoint (`SP-zone1`) **plus `boost.hCu`**
+(`heatp.1 → function → boost`), in HA the gap between `Heatpump HC Setpoint` and
+`Heatpump Buffer Setpoint`. The parameter is in neither manual — the documented heat-pump
+boost (2.2.x.3.3) is a set of percentages per consumer — but changing it moves that gap
+one-for-one, within a poll.
 
-The signature in the data: `Heatpump On` = on, `Heatpump HC Setpoint` = the buffer
-setpoint, frequency 0, and each stall ending when outlet ≈ (inlet at stop − 3).
-Observed 2026-10-06 → 10-09, after HC1's roomOT1/roomOT2 went 18 → 20 °C: runs lengthened
-from ~2 min to 8–12 min and stalls of 1.5–13 h took up about half the time. Before that,
-2-minute runs ended (HPM demand off at buffer ≥ setpoint) before the 3-minute timer could
-expire, so this never showed.
+**Keep `boost.hCu` at 3 °C. At 0 the heating stalls for hours.** Charging the buffer *to*
+its setpoint needs outlet water *above* it — a charge run sends 26–28 °C — so with no
+margin any run longer than about 3 minutes trips the Aquarea's own +2 K thermo-off above
+while the HPM is still demanding heat. The compressor then waits for its water to fall
+~3 K, which can take hours, while the buffer sags 4–5 K below setpoint. Status and error
+code stay normal throughout. With the margin, the self-stop point is above anything a charge
+run reaches and the HPM's buffer control decides on and off, as intended.
 
-A fix needs a margin between the setpoint sent to the Aquarea and the buffer setpoint.
-Candidate HPM parameters, neither confirmed — the manuals do not match this firmware's
-labels:
+The signature of a stall: `Heatpump On` = on, `Heatpump HC Setpoint` ≈ the buffer
+setpoint, frequency 0, and each stall ending when outlet ≈ (inlet at stop − 3). It ran at
+0 °C for 2026-10-06 → 10-09, once HC1's roomOT1/roomOT2 had gone 18 → 20 °C: runs
+lengthened from ~2 min to 8–12 min and stalls of 1.5–13 h took up about half the time.
+Short runs hide it — a 2-minute run ends (HPM demand off at buffer ≥ setpoint) before the
+3-minute timer can expire — so a lower demand can make it disappear and a higher one bring
+it back.
 
-- `heatp.1 → function → boost → boost.hCu` (live 0.0 °C). Not in either manual; the
-  documented heat-pump boost (2.2.x.3.3) is a set of percentages per consumer, while this
-  firmware shows `boost DHW1` plus this absolute °C value.
-- `buffer tank → setpoints → boostZ1` (live 0.0). Part 2 §4.2 calls it "boost demand
-  buffer zone 1", range 1.0–25.0, default 5.0; part 1's menu tree says "boost until
-  switch-off limit". The live value is below the documented minimum.
+With 3 °C (set 2026-10-09) the first 21 h had no stalls, HC1's flow tracked its setpoint,
+and the price is the start rate: a steady 13-minute rhythm — 5–10 min running, then the
+buffer's `minSwOf` (5 min) plus the Aquarea's 3-minute wait — about 100 starts a day. The
+lever for fewer, longer runs is `minSwOf`, not `boost.hCu`.
 
-Change one at a time and watch whether `Heatpump HC Setpoint` moves away from
-`Heatpump Buffer Setpoint`; if it does not, revert.
+`buffer tank → setpoints → boostZ1` (live 0.0; part 2 §4.2 "boost demand buffer zone 1",
+range 1.0–25.0, default 5.0) was the other candidate and is untested.
 
 ---
 
