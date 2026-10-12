@@ -108,9 +108,13 @@ def parse_hp1(html: str) -> HeatPumpUnit:
         frequency=int(parse_float(extract_param(html, "126"))),
         error_code=parse_last_token(extract_param(html, "125")),
         hc_setpoint=_lenient(html, "109", parse_float),
+        dhw_setpoint=_lenient(html, "110", parse_float),
         operating_state=_lenient(html, "88", parse_text),
         heat_demand=_lenient(html, "89", parse_text),
         defrost=_lenient(html, "124", parse_on_off),
+        tank_heating=_lenient(html, "117", parse_on_off),
+        electric_heater=_lenient(html, "120", parse_on_off),
+        booster_heater=_lenient(html, "121", parse_on_off),
     )
 
 

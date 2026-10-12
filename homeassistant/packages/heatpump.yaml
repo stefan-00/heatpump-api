@@ -150,6 +150,17 @@ rest:
         device_class: temperature
         state_class: measurement
 
+      # What the HPM asks the unit for as DHW target, with the same 2 °C
+      # no-demand placeholder. Not "DHW Setpoint" above, which is the HPM's
+      # own tank setpoint from the DHW page.
+      - name: "Heatpump DHW Setpoint"
+        unique_id: heatpump_hp_dhw_setpoint
+        availability: "{{ value_json is defined and value_json.heat_pump is defined and value_json.heat_pump is not none and value_json.heat_pump.dhw_setpoint is defined and value_json.heat_pump.dhw_setpoint is not none }}"
+        value_template: "{{ value_json.heat_pump.dhw_setpoint if (value_json.heat_pump is defined and value_json.heat_pump is not none and value_json.heat_pump.dhw_setpoint is defined) else none }}"
+        unit_of_measurement: "°C"
+        device_class: temperature
+        state_class: measurement
+
       - name: "Heatpump Operating State"
         unique_id: heatpump_hp_operating_state
         availability: "{{ value_json is defined and value_json.heat_pump is defined and value_json.heat_pump is not none and value_json.heat_pump.operating_state is defined and value_json.heat_pump.operating_state is not none }}"
@@ -240,6 +251,24 @@ rest:
         unique_id: heatpump_hp_defrost
         availability: "{{ value_json is defined and value_json.heat_pump is defined and value_json.heat_pump is not none and value_json.heat_pump.defrost is defined and value_json.heat_pump.defrost is not none }}"
         value_template: "{{ 'ON' if value_json.heat_pump.defrost else 'OFF' }}"
+
+      # Tank mode and the Aquarea's heaters (9 kW backup, 3 kW tank booster).
+      # The heater states come from the Aquarea over its bus and have not yet
+      # been verified against the real relays.
+      - name: "Heatpump Tank Heating"
+        unique_id: heatpump_hp_tank_heating
+        availability: "{{ value_json is defined and value_json.heat_pump is defined and value_json.heat_pump is not none and value_json.heat_pump.tank_heating is defined and value_json.heat_pump.tank_heating is not none }}"
+        value_template: "{{ 'ON' if value_json.heat_pump.tank_heating else 'OFF' }}"
+
+      - name: "Heatpump Electric Heater"
+        unique_id: heatpump_hp_electric_heater
+        availability: "{{ value_json is defined and value_json.heat_pump is defined and value_json.heat_pump is not none and value_json.heat_pump.electric_heater is defined and value_json.heat_pump.electric_heater is not none }}"
+        value_template: "{{ 'ON' if value_json.heat_pump.electric_heater else 'OFF' }}"
+
+      - name: "Heatpump Booster Heater"
+        unique_id: heatpump_hp_booster_heater
+        availability: "{{ value_json is defined and value_json.heat_pump is defined and value_json.heat_pump is not none and value_json.heat_pump.booster_heater is defined and value_json.heat_pump.booster_heater is not none }}"
+        value_template: "{{ 'ON' if value_json.heat_pump.booster_heater else 'OFF' }}"
 
   # HC1 setpoints — room setpoints per timer period: occupation times OT1–OT4,
   # non-occupation time (NO) and special non-occupation time (SNOT, holiday).

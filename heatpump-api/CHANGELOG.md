@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.1.15 — 2026-10-11
+
+### Added
+
+- `heat_pump.tank_heating`, `electric_heater`, `booster_heater` and `dhw_setpoint` in
+  `GET /api/v1/status`, parsed best-effort from `v21.rsp` (ids 117, 120, 121, 110), so a
+  stalled legionella disinfection run can be diagnosed. `dhw_setpoint` is the DHW target
+  the HPM sends to the heat pump, reported as-is including its 2 °C no-demand placeholder;
+  it is not `domestic_hot_water.setpoint`. The heater states are unverified against the
+  real relays.
+
 ## 0.1.4 — 2026-06-15
 
 ### Changed

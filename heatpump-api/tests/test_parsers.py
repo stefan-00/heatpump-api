@@ -68,6 +68,38 @@ def test_hp1_heat_source_values(page):
     assert hp.defrost is False
 
 
+# --- tank heating, heaters and DHW setpoint -------------------------------
+
+def test_hp1_tank_and_heater_values(page):
+    hp = parse_hp1(page("v21"))
+    assert (hp.tank_heating, hp.electric_heater, hp.booster_heater) == (False,) * 3
+    assert hp.dhw_setpoint == 2.0  # no-demand placeholder, reported as-is
+
+
+@pytest.mark.parametrize(
+    "param_id, label, field",
+    [
+        ("117", "OP-TANK", "tank_heating"),
+        ("120", "Stat-Heater", "electric_heater"),
+        ("121", "Stat-Booster", "booster_heater"),
+    ],
+)
+def test_hp1_heater_reads_on(page, param_id, label, field):
+    html = _replace_value(page("v21"), param_id, f"{label}                     on")
+    assert getattr(parse_hp1(html), field) is True
+
+
+def test_malformed_tank_and_heater_values_become_none(page):
+    html = page("v21")
+    html = _replace_value(html, "110", "setp.DHW   --- °C")
+    html = _replace_value(html, "117", "OP-TANK   ???")
+    html = _replace_value(html, "120", "Stat-Heater   ???")
+    html = _replace_value(html, "121", "Stat-Booster   ???")
+    hp = parse_hp1(html)
+    assert (hp.dhw_setpoint, hp.tank_heating, hp.electric_heater, hp.booster_heater) == (None,) * 4
+    assert hp.outlet_temp == 37.0
+
+
 # --- 2.3 mixing valves ----------------------------------------------------
 
 def test_valve_positions(page):
@@ -114,10 +146,11 @@ def test_existing_fields_still_populated(page):
 
 def test_missing_new_values_leave_core_fields_intact(page):
     html = page("v21")
-    for param_id in ("109", "88", "89", "124"):
+    for param_id in ("109", "110", "88", "89", "124", "117", "120", "121"):
         html = _drop_param(html, param_id)
     hp = parse_hp1(html)
     assert (hp.hc_setpoint, hp.operating_state, hp.heat_demand, hp.defrost) == (None,) * 4
+    assert (hp.dhw_setpoint, hp.tank_heating, hp.electric_heater, hp.booster_heater) == (None,) * 4
     assert hp.outlet_temp == 37.0
 
     hc1 = parse_hc1(_drop_param(page("v30"), "16"))

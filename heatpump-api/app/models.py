@@ -10,13 +10,22 @@ class HeatPumpUnit(BaseModel):
     return_temp: float
     frequency: int
     error_code: str
-    # Heat-source demand (v21.rsp), best-effort. hc_setpoint is what the HPM
-    # asks the heat pump for; the device shows a low placeholder (seen: 2 °C)
-    # while there is no demand, and it is reported as-is.
+    # Heat-source demand (v21.rsp), best-effort. hc_setpoint and dhw_setpoint
+    # are what the HPM asks the heat pump for; the device shows a low
+    # placeholder (seen: 2 °C) while there is no demand, and it is reported
+    # as-is. dhw_setpoint is not domestic_hot_water.setpoint, the HPM's own
+    # tank setpoint.
     hc_setpoint: float | None = None
+    dhw_setpoint: float | None = None
     operating_state: str | None = None
     heat_demand: str | None = None
     defrost: bool | None = None
+    # Tank mode and the Aquarea's heaters: electric_heater is the backup
+    # heater, booster_heater the tank's immersion heater. Both come from the
+    # Aquarea over its bus and are unverified against the real relays.
+    tank_heating: bool | None = None
+    electric_heater: bool | None = None
+    booster_heater: bool | None = None
 
 
 class HeatingCircuit(BaseModel):

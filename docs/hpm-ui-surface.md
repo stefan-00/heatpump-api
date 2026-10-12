@@ -44,10 +44,10 @@ v0.rsp  ────────────────────────
 | 112 | Return temp | `24 °C` | float | ✓ `heat_pump.return_temp` |
 | 126 | Compressor frequency | `0 Hz` | int | ✓ `heat_pump.frequency` |
 | 125 | Error code | `---` | str | ✓ `heat_pump.error_code` |
-| 117 | Tank heating active | `off` | bool | — |
+| 117 | Tank heating active | `off` | bool | ✓ `heat_pump.tank_heating` |
 | 118 | Force mode active | `off` | bool | — |
-| 120 | Electric heater active | `off` | bool | — |
-| 121 | Booster active | `off` | bool | — |
+| 120 | Electric heater active | `off` | bool | ✓ `heat_pump.electric_heater` |
+| 121 | Booster active | `off` | bool | ✓ `heat_pump.booster_heater` |
 | 124 | Defrost active | `off` | bool | ✓ `heat_pump.defrost` |
 | 123 | Warning active | `off` | bool | — |
 | 128 | Electric heat energy | `9 kW` | int | — (configured capacity) |
@@ -56,11 +56,17 @@ v0.rsp  ────────────────────────
 | 88  | Operating state | `normal` | str | ✓ `heat_pump.operating_state` |
 | 89  | Heat demand | `no demand` / `dem. HC2` | str | ✓ `heat_pump.heat_demand` |
 | 109 | HC setpoint sent to the HP | `42 °C` | float | ✓ `heat_pump.hc_setpoint` |
-| 110 | DHW setpoint sent to the HP | `2 °C` | float | — |
+| 110 | DHW setpoint sent to the HP | `2 °C` | float | ✓ `heat_pump.dhw_setpoint` |
 
 Ids 109/110 are what the HPM *asks the heat pump for*, not values the heat pump
 reports back. With no demand they show a `2 °C` placeholder; on 2026-09-25, during
 HC2 (pool) demand at 41 Hz, id 109 read `42 °C` while the outlet (111) read 37 °C.
+Id 110 (`heat_pump.dhw_setpoint`) is not the HPM's own tank setpoint, which is
+`domestic_hot_water.setpoint` from the DHW page.
+
+Ids 120 (`Stat-Heater`, the 9 kW backup heater) and 121 (`Stat-Booster`, the tank's
+3 kW immersion heater) come from the Aquarea over its bus. Neither has been seen
+reading `on` yet, so whether they track the real relays is unverified.
 
 
 ## Heating circuit 1 (floor heating) — v30.rsp
@@ -132,7 +138,7 @@ Full view. Also available as v3000 (minimal: state/mode/timer/actual temp only).
 |-----|-------|---------|------|-----|
 | 37  | Setpoint | `45.0 °C` | float | ✓ `dhw.setpoint` |
 | 38  | Actual temperature | `49.0 °C` | float | ✓ `dhw.actual_temp` |
-| 117 | Tank heating active | `off` | bool | — (also in v21) |
+| 117 | Tank heating active | `off` | bool | — (read from v21 as `heat_pump.tank_heating`) |
 | 34  | Operating mode | `nom. oper. OT2` | str | — |
 | 35  | Operating state | `normal` | str | — |
 | 36  | Timer status | `timer-OT2 -----` | str | — |

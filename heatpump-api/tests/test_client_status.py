@@ -38,6 +38,10 @@ def test_status_includes_new_values():
     assert status["heat_pump"]["operating_state"] == "normal"
     assert status["heat_pump"]["heat_demand"] == "dem. HC2"
     assert status["heat_pump"]["defrost"] is False
+    assert status["heat_pump"]["dhw_setpoint"] == 2.0
+    assert status["heat_pump"]["tank_heating"] is False
+    assert status["heat_pump"]["electric_heater"] is False
+    assert status["heat_pump"]["booster_heater"] is False
     assert status["buffer"] == {"temp": 35.7, "setpoint": 42.0}
     assert status["heating_circuit_1"]["valve_position"] == 0.0
     assert status["heating_circuit_2"]["valve_position"] == 100.0
