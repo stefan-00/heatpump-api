@@ -102,8 +102,8 @@ A single poll of `/api/v1/status` every 30 seconds populates:
 The mixing-valve positions are the controllers' `Y-contr.` signals, in percent.
 **Only HC1 has a mixing valve.** HC2, the pool, is a circulation pump straight off the
 buffer, so its `Y-contr.` drives nothing — it reads `100 %` whenever the pool is heating,
-and that says nothing about how the circuits share the buffer. The plant room is described
-in `kolarbacken35/docs/home_overview.md`.
+and that says nothing about how the circuits share the buffer. The heating installation is
+described in `kolarbacken35/docs/heating.md`.
 
 > **Resilience to API errors:** if the API returns an error body (e.g. a `502` with
 > `{"detail": ...}` when the heatpump is briefly unreachable), an empty/non-JSON body, or
