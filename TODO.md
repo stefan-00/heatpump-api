@@ -29,21 +29,24 @@ operating state 3 = boost 10 %, operating state 4 = demand 50 °C.
   it should, since HC1 regulates its own flow, but verify with the `HC1 Valve Position`
   sensor (`Y-contr`).
 
-## 2. Expose electric heater / booster status
+## 2. Verify the electric heater status
 
 **Why.** Pushing the HC2 floor to 50 °C (2026-09-25) keeps the heat pump in continuous
 demand without ever reaching setpoint, which is the condition under which the Aquarea's
 9 kW electric backup heater engages (`BoosterH 1`, `BoostDel 60 min`). `OutTOn −10 °C`
 should keep it off at mild outdoor temperatures, but that is a setting, not an
-observation — and the only way to check today is to guess from whole-house consumption
-spikes, which cooking also produces. A heater running at COP 1 silently would make any
-high-floor boost expensive.
+observation. A heater running at COP 1 silently would make any high-floor boost
+expensive.
 
-**What to add.** `v21.rsp` id 120 (electric heater active) and id 121 (booster active),
-parsed like `defrost` (id 124) in `parse_hp1`, as two more binary sensors in
-`homeassistant/packages/heatpump.yaml`, and onto the "Pump / Compressor activity" panel.
-Possibly also id 117 (tank heating active), so DHW runs are distinguishable from HC
-demand.
+**Done** (v0.1.15, `add-dhw-heater-status`): ids 117/120/121 are parsed and exposed as
+`Heatpump Tank Heating` / `Electric Heater` / `Booster Heater`, and are recorded in
+InfluxDB. The booster read `on` on 2026-10-12 11:58–14:10 inside a tank-heating run
+(10:59–14:10), which fits the legionella disinfection — so id 121 does change state.
+
+All three are on the "Pump / Compressor activity" panel (2026-10-14).
+
+**Left.** Verify `Electric Heater` (id 120): it has never read `on`. Confirm against a
+known backup-heater run, e.g. a consumption step of ~9 kW (or 3/6 kW) with no cooking.
 
 ## 3. Find out what caps the compressor frequency
 

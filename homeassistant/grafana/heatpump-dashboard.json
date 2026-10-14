@@ -338,7 +338,7 @@
         "overrides": []
       },
       "gridPos": {
-        "h": 6,
+        "h": 9,
         "w": 24,
         "x": 0,
         "y": 9
@@ -404,6 +404,39 @@
           "query": "SELECT last(\"value\") FROM \"binary_sensor.heatpump_defrost\" WHERE $timeFilter GROUP BY time($__interval) fill(previous)",
           "rawQuery": true,
           "refId": "D",
+          "resultFormat": "time_series"
+        },
+        {
+          "alias": "Tank Heating",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${DS_INFLUXDB}"
+          },
+          "query": "SELECT last(\"value\") FROM \"binary_sensor.heatpump_tank_heating\" WHERE $timeFilter GROUP BY time($__interval) fill(previous)",
+          "rawQuery": true,
+          "refId": "E",
+          "resultFormat": "time_series"
+        },
+        {
+          "alias": "Electric Heater",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${DS_INFLUXDB}"
+          },
+          "query": "SELECT last(\"value\") FROM \"binary_sensor.heatpump_electric_heater\" WHERE $timeFilter GROUP BY time($__interval) fill(previous)",
+          "rawQuery": true,
+          "refId": "F",
+          "resultFormat": "time_series"
+        },
+        {
+          "alias": "Booster Heater",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${DS_INFLUXDB}"
+          },
+          "query": "SELECT last(\"value\") FROM \"binary_sensor.heatpump_booster_heater\" WHERE $timeFilter GROUP BY time($__interval) fill(previous)",
+          "rawQuery": true,
+          "refId": "G",
           "resultFormat": "time_series"
         }
       ],
@@ -476,7 +509,7 @@
         "h": 8,
         "w": 12,
         "x": 0,
-        "y": 15
+        "y": 18
       },
       "id": 3,
       "options": {
@@ -609,7 +642,7 @@
         "h": 8,
         "w": 12,
         "x": 12,
-        "y": 15
+        "y": 18
       },
       "id": 4,
       "options": {
@@ -799,7 +832,7 @@
         "h": 9,
         "w": 24,
         "x": 0,
-        "y": 23
+        "y": 26
       },
       "id": 5,
       "options": {
@@ -1020,7 +1053,7 @@
         "h": 9,
         "w": 24,
         "x": 0,
-        "y": 32
+        "y": 35
       },
       "id": 6,
       "options": {
