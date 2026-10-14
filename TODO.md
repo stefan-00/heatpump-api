@@ -5,10 +5,17 @@ where to start; move it into `openspec/changes/` once it is picked up.
 
 ## 1. Use the HPM's built-in PV function for solar-surplus heating
 
-**Why.** The pool (and the house) should be heated with surplus solar rather than
-exported at ~1.2–1.5 SEK/kWh. The HPM already has this: `MCR-BMS → photovoltaics`
-raises the heating demand to a fixed temperature while a PV signal is active. It is
-configured but not wired:
+**Why.** Surplus solar should go into the pool and the hot water instead of being exported.
+**This is about convenience, not money.** Measured 2026-10-14: midday export is worth only
+~0.65 SEK/kWh, not the 1.2–1.5 once assumed here. Surplus and the house's heat demand
+barely overlap — large surplus in summer, when only the pool and hot water need heat, none
+from November to February. As space heating that is under 100 SEK a year. What the relay
+does buy is the pool heated on surplus without hand-tuning, and hot water charged on
+surplus without moving the DHW timer by hand twice a year. Figures and reasoning:
+`kolarbacken35/docs/energy.md`, "The battery already moves the heat pump's load".
+
+The HPM already has this: `MCR-BMS → photovoltaics` raises the heating demand to a fixed
+temperature while a PV signal is active. It is configured but not wired:
 
 - `type photovoltaics`: `type-Pv 1`, `dem-HC 1`, `dem-DHW 1`
 - `temperatures`: `dem-HC 50 °C`, `dem-DHW 50 °C`
