@@ -45,7 +45,6 @@ homeassistant/         # artefacts deployed into the HA box (copied in by hand)
     nightly-config-export.yaml   # runs the Git Exporter add-on on a schedule
   node-red/
     pool-heating-flow.json
-  grafana/             # heatpump + sigenergy dashboards
 research/              # WEB-RC protocol probes and the menu-tree dump
                        #   (see research/README.md; root-level debug_*.py stays gitignored)
 docs/                  # written documentation
@@ -98,9 +97,12 @@ API docs available at `http://localhost:8765/docs` once running.
 
 ## Grafana / InfluxDB access
 
-The dashboards under `homeassistant/grafana/` are read and edited live through
-the **`grafana-home` MCP server** (user scope, so it works from any project).
-It points at the Grafana add-on on the HA box, `192.168.68.75`.
+The heat pump dashboards (*Värmepump*, *Varmvatten och legionella*, *Elpatroner*,
+in the Grafana folder *Värme*) live in the Grafana add-on and are read and edited
+there through the **`grafana-home` MCP server** (user scope, so it works from any
+project). It points at the Grafana add-on on the HA box, `192.168.68.75`. This
+repo keeps no copy: ha-config snapshots every dashboard nightly to
+`config/grafana/<uid>.json`, and its `GRAFANA.md` has the design notes.
 
 - `search_dashboards` / `get_dashboard_summary` / `update_dashboard` — the
   summary tool gives panel titles and types without pulling full dashboard JSON
