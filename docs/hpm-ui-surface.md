@@ -67,8 +67,12 @@ Id 110 (`heat_pump.dhw_setpoint`) is not the HPM's own tank setpoint, which is
 Ids 120 (`Stat-Heater`, the 9 kW backup heater) and 121 (`Stat-Booster`, the tank's
 3 kW immersion heater) come from the Aquarea over its bus. Id 121 read `on` on
 2026-10-12 11:58–14:10, inside a tank-heating run (id 117, 10:59–14:10) consistent with
-the legionella disinfection, so it does change state. Id 120 has not been seen `on` yet,
-so whether it tracks the real backup-heater relay is unverified.
+the legionella disinfection, so it does change state. **Id 120 tracks the real backup
+heater**: from 2026-10-12 to 10-20 it read `on` four times, 8–14 minutes each, and each
+run matches a ~10 kW step in the house's consumption that nothing else explains. Every run
+coincided with id 124 (`Stat-Defrost`), at 0–2 °C outdoors — the service manual (§12.9.1)
+has the heater operate during deice regardless of `OutTOn −10 °C` — and it never read `on`
+outside a defrost.
 
 
 ## Heating circuit 1 (floor heating) — v30.rsp

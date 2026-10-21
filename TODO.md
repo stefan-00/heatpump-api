@@ -36,26 +36,7 @@ operating state 3 = boost 10 %, operating state 4 = demand 50 °C.
   it should, since HC1 regulates its own flow, but verify with the `HC1 Valve Position`
   sensor (`Y-contr`).
 
-## 2. Verify the electric heater status
-
-**Why.** Pushing the HC2 floor to 50 °C (2026-09-25) keeps the heat pump in continuous
-demand without ever reaching setpoint, which is the condition under which the Aquarea's
-9 kW electric backup heater engages (`BoosterH 1`, `BoostDel 60 min`). `OutTOn −10 °C`
-should keep it off at mild outdoor temperatures, but that is a setting, not an
-observation. A heater running at COP 1 silently would make any high-floor boost
-expensive.
-
-**Done** (v0.1.15, `add-dhw-heater-status`): ids 117/120/121 are parsed and exposed as
-`Heatpump Tank Heating` / `Electric Heater` / `Booster Heater`, and are recorded in
-InfluxDB. The booster read `on` on 2026-10-12 11:58–14:10 inside a tank-heating run
-(10:59–14:10), which fits the legionella disinfection — so id 121 does change state.
-
-All three are on the "Pump / Compressor activity" panel (2026-10-14).
-
-**Left.** Verify `Electric Heater` (id 120): it has never read `on`. Confirm against a
-known backup-heater run, e.g. a consumption step of ~9 kW (or 3/6 kW) with no cooking.
-
-## 3. Find out what caps the compressor frequency
+## 2. Find out what caps the compressor frequency
 
 **Why.** With a 50 °C demand that was never reached, the compressor held a flat
 43–44 Hz for 3+ hours (outdoor ~11–13 °C). On colder nights earlier that week it ran at
